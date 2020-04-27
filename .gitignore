@@ -1,0 +1,8 @@
+*.pyc
+/.idea
+/.env
+/build
+/logs
+/tests/*.db
+/tests/logs
+*.log
