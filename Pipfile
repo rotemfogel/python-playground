@@ -4,6 +4,7 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [packages]
+apache-airflow = {extras = ["celery", "crypto", "google_auth", "mysql", "postgres","slack", "redis", "s3", "vertica", "statsd"],version = "==1.10.9"}
 boto = "*"
 boto3 = "*"
 pendulum = "==1.4.4"
