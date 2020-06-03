@@ -10,6 +10,9 @@ name = "astronomer"
 
 [packages]
 astronomer-certified = {extras = ["celery", "crypto", "google_auth", "mysql", "postgres","slack", "redis", "s3", "vertica", "statsd"],version = "==1.10.10.*"}
+# apache-airflow = {extras = ["celery", "crypto", "google_auth", "mysql", "postgres","slack", "redis", "s3", "vertica", "statsd"],version = "==1.10.9"}
 boto = "*"
 boto3 = "*"
-smart_open= "*"
+smart_open = "*"
+google-api-core = "*"
+google-api-python-client = "*"
