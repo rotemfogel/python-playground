@@ -6,3 +6,4 @@
 /tests/*.db
 /tests/logs
 *.log
+.env
