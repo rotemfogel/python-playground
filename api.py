@@ -16,13 +16,13 @@ _active_last_ts: str = os.getenv('ACTIVE_CAMPAIGNS_LAST_TS')
 _campaign_ids: list = json.loads(os.getenv('CAMPAIGN_IDS'))
 
 
-class ActiveCampaignsBaseOperator(LoggingMixin) :
-    _schema = {'db_report' : 'dbr'}
+class ActiveCampaignsBaseOperator(LoggingMixin):
+    _schema = {'db_report': 'dbr'}
     _bucket = _data_bucket
     _database = _schema['db_report']
     _active_campaigns_conf = {
-        'endpoint' : _endpoint,
-        'secret' : _secret
+        'endpoint': _endpoint,
+        'secret': _secret
     }
     _active_campaigns_last_ts: dict = json.loads(_active_last_ts)
     _datetime_format = '%Y-%m-%d %H:%M:%S'
@@ -73,10 +73,10 @@ class ActiveCampaignsBaseOperator(LoggingMixin) :
     def _save(self, context, records: list) -> None:
         if records:
             api_action = self._api_action
+            execution_date = context['ti'].execution_date if context else Pendulum.now()
+            full_date = execution_date.format('%Y-%m-%dT%H:%M:%S')
+            date = execution_date.format('%Y-%m-%d')
             if self._last_ts_ind:
-                execution_date = context['ti'].execution_date if context else Pendulum.now()
-                full_date = execution_date.format('%Y-%m-%dT%H:%M:%S')
-                date = execution_date.format('%Y-%m-%d')
                 hour = execution_date.format('%H')
                 uri: str = 's3://{bucket}/{schema}/active_campaigns/{table}/' \
                            'date_={date}/hour={hour}/{file_name}.json.gz'.format(bucket=self._bucket,
@@ -87,12 +87,14 @@ class ActiveCampaignsBaseOperator(LoggingMixin) :
                                                                                  file_name='{}_{}'.format(
                                                                                      self._api_action, full_date))
             else:
+                # get then last uri path (i.e. /a/b/c -> c)
                 api_action = self._api_prefix.split('/')[-1]
                 uri: str = 's3://{bucket}/{schema}/active_campaigns/{table}/' \
-                           '{file_name}.json.gz'.format(bucket=self._bucket,
-                                                        schema=self._database,
-                                                        table=api_action,
-                                                        file_name=api_action)
+                           'date_={date}/{file_name}.json.gz'.format(bucket=self._bucket,
+                                                                     schema=self._database,
+                                                                     table=api_action,
+                                                                     date=date,
+                                                                     file_name=api_action)
 
             with smart_open.open(uri=uri, mode='wb') as s3_file:
                 self.log.info('About to write response to {}'.format(uri))
@@ -196,9 +198,9 @@ class ActiveCampaignsDeltaOperator(ActiveCampaignsBaseOperator):
                                 timestamp = row['info'][0]['tstamp']
                             record_time: datetime = datetime.strptime(timestamp, self._datetime_format)
                             # update the variable with highest timestamp
-                            if record_time > high_ts :
+                            if record_time > high_ts:
                                 high_ts = record_time
-                            if record_time <= last_watermark :
+                            if record_time <= last_watermark:
                                 break
                             records.append(row)
                 if len(keys) < limit:
@@ -229,7 +231,7 @@ def main():
                                          api_action=task.get('api_action', None),
                                          sort_key=task.get('sort_key', None))
     ac.execute()
-    for task in tasks :
+    for task in tasks:
         task_id = task['api_action']
         ac = ActiveCampaignsDeltaOperator(api_prefix=task['api_prefix'],
                                           data_point=task.get('data_point', None),
