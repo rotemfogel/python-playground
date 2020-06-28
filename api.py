@@ -12,17 +12,17 @@ load_dotenv(find_dotenv())
 _endpoint = os.getenv('ENDPOINT')
 _secret = os.getenv('SECRET')
 _data_bucket = os.getenv('DATA_BUCKET')
-_active_last_ts = os.getenv('ACTIVE_LAST_TS')
-_campaign_ids = []
+_active_last_ts: str = os.getenv('ACTIVE_CAMPAIGNS_LAST_TS')
+_campaign_ids: list = json.loads(os.getenv('CAMPAIGN_IDS'))
 
 
-class ActiveCampaignsBaseOperator(LoggingMixin):
-    _schema = {'db_report': 'dbr'}
+class ActiveCampaignsBaseOperator(LoggingMixin) :
+    _schema = {'db_report' : 'dbr'}
     _bucket = _data_bucket
     _database = _schema['db_report']
     _active_campaigns_conf = {
-        'endpoint': _endpoint,
-        'secret': _secret
+        'endpoint' : _endpoint,
+        'secret' : _secret
     }
     _active_campaigns_last_ts: dict = json.loads(_active_last_ts)
     _datetime_format = '%Y-%m-%d %H:%M:%S'
@@ -72,6 +72,7 @@ class ActiveCampaignsBaseOperator(LoggingMixin):
 
     def _save(self, context, records: list) -> None:
         if records:
+            api_action = self._api_action
             if self._last_ts_ind:
                 execution_date = context['ti'].execution_date if context else Pendulum.now()
                 full_date = execution_date.format('%Y-%m-%dT%H:%M:%S')
@@ -123,7 +124,7 @@ class ActiveCampaignsCampaignOperator(ActiveCampaignsBaseOperator):
             if row:
                 records.append(row)
 
-        ## self._save(context, records)
+        self._save(context, records)
 
         # get the campaign messages from the campaigns
         ##  campaign_ids = []
@@ -195,16 +196,16 @@ class ActiveCampaignsDeltaOperator(ActiveCampaignsBaseOperator):
                                 timestamp = row['info'][0]['tstamp']
                             record_time: datetime = datetime.strptime(timestamp, self._datetime_format)
                             # update the variable with highest timestamp
-                            if record_time > high_ts:
+                            if record_time > high_ts :
                                 high_ts = record_time
-                            if record_time < last_watermark:
+                            if record_time <= last_watermark :
                                 break
                             records.append(row)
                 if len(keys) < limit:
                     break
                 offset += limit
             # save the campaign result
-            ## self._save(context, records)
+            self._save(context, records)
             if high_ts > last_watermark:
                 self._save_last_ts(campaign[self._campaign_id], datetime.strftime(high_ts, self._datetime_format))
 
@@ -228,13 +229,24 @@ def main():
                                          api_action=task.get('api_action', None),
                                          sort_key=task.get('sort_key', None))
     ac.execute()
-    for task in tasks:
+    for task in tasks :
         task_id = task['api_action']
         ac = ActiveCampaignsDeltaOperator(api_prefix=task['api_prefix'],
                                           data_point=task.get('data_point', None),
                                           api_action=task.get('api_action', None),
                                           sort_key=task.get('sort_key', None))
         ac.execute()
+
+    # if _active_campaigns_last_ts:
+    #     f = open(".env", "r+")
+    #     lines = f.readlines()
+    #     if lines:
+    #         w = open("env", "w+")
+    #         for line in lines:
+    #             w.write(line)
+    #         w.write('ACTIVE_CAMPAIGNS_LAST_TS={}'.format(json.dumps(_active_campaigns_last_ts)))
+    #         w.close()
+    #     f.close()
 
 
 if __name__ == '__main__':
