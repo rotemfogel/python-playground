@@ -12,23 +12,24 @@ load_dotenv(find_dotenv())
 _endpoint = os.getenv('ENDPOINT')
 _secret = os.getenv('SECRET')
 _data_bucket = os.getenv('DATA_BUCKET')
-_active_last_ts: str = os.getenv('ACTIVE_CAMPAIGNS_LAST_TS')
+_active_last_ts: str = os.getenv('ACTIVE_CAMPAIGN_LAST_TS')
 _campaign_ids: list = json.loads(os.getenv('CAMPAIGN_IDS'))
 
 
-class ActiveCampaignsBaseOperator(LoggingMixin):
+class ActiveCampaignBaseOperator(LoggingMixin):
     _schema = {'db_report': 'dbr'}
     _bucket = _data_bucket
     _database = _schema['db_report']
-    _active_campaigns_conf = {
+    _active_campaign_conf = {
         'endpoint': _endpoint,
         'secret': _secret
     }
-    _active_campaigns_last_ts: dict = json.loads(_active_last_ts)
+    _active_campaign_last_ts: dict = json.loads(_active_last_ts or {})
     _datetime_format = '%Y-%m-%d %H:%M:%S'
 
     _campaign_id = 'campaignid'
     _message_id = 'messageid'
+    _default_start_time = '2020-01-01 00:00:00'
 
     template_fields = ('api_prefix', 'api_action', 'data_point', 'sort_key')
 
@@ -46,8 +47,8 @@ class ActiveCampaignsBaseOperator(LoggingMixin):
         self._data_point = data_point
         self._sort_key = sort_key
         self._last_ts_ind = last_ts_ind
-        self._endpoint: str = self._active_campaigns_conf['endpoint']
-        self._secret: str = self._active_campaigns_conf['secret']
+        self._endpoint: str = self._active_campaign_conf['endpoint']
+        self._secret: str = self._active_campaign_conf['secret']
 
     def _build_params(self):
         params = {'api_key': self._secret, 'api_output': 'json'}
@@ -78,7 +79,7 @@ class ActiveCampaignsBaseOperator(LoggingMixin):
             date = execution_date.format('%Y-%m-%d')
             if self._last_ts_ind:
                 hour = execution_date.format('%H')
-                uri: str = 's3://{bucket}/{schema}/active_campaigns/{table}/' \
+                uri: str = 's3://{bucket}/{schema}/{table}/' \
                            'date_={date}/hour={hour}/{file_name}.json.gz'.format(bucket=self._bucket,
                                                                                  schema=self._database,
                                                                                  table=self._api_action,
@@ -89,7 +90,7 @@ class ActiveCampaignsBaseOperator(LoggingMixin):
             else:
                 # get then last uri path (i.e. /a/b/c -> c)
                 api_action = self._api_prefix.split('/')[-1]
-                uri: str = 's3://{bucket}/{schema}/active_campaigns/{table}/' \
+                uri: str = 's3://{bucket}/{schema}/{table}/' \
                            'date_={date}/{file_name}.json.gz'.format(bucket=self._bucket,
                                                                      schema=self._database,
                                                                      table=api_action,
@@ -106,7 +107,7 @@ class ActiveCampaignsBaseOperator(LoggingMixin):
                 self.log.info('Uploaded {} to S3'.format(api_action))
 
 
-class ActiveCampaignsCampaignOperator(ActiveCampaignsBaseOperator):
+class ActiveCampaignCampaignOperator(ActiveCampaignBaseOperator):
     _campaign_message = 'campaignMessage'
     template_fields = ('api_prefix', 'data_point')
 
@@ -146,7 +147,7 @@ class ActiveCampaignsCampaignOperator(ActiveCampaignsBaseOperator):
         ##   context['ti'].xcom_push(key=super().dag_id, value=campaign_ids)
 
 
-class ActiveCampaignsDeltaOperator(ActiveCampaignsBaseOperator):
+class ActiveCampaignDeltaOperator(ActiveCampaignBaseOperator):
     template_fields = ('api_prefix', 'api_action', 'data_point', 'sort_key', 'last_ts_ind')
 
     def __init__(self,
@@ -157,7 +158,7 @@ class ActiveCampaignsDeltaOperator(ActiveCampaignsBaseOperator):
                  *args,
                  **kwargs):
         super().__init__(api_prefix, data_point, api_action, sort_key, True, *args, **kwargs)
-        self._default_campaign_last_ts = {self._api_action: '2020-01-01 00:00:00'}
+        self._default_campaign_last_ts = {self._api_action: self._default_start_time}
 
     def execute(self, context=None):
         campaigns = _campaign_ids
@@ -170,8 +171,8 @@ class ActiveCampaignsDeltaOperator(ActiveCampaignsBaseOperator):
             params.update({self._campaign_id: campaign[self._campaign_id],
                            self._message_id: campaign[self._message_id]})
             # get the last watermark for the campaign/api
-            campaign_last_ts = self._active_campaigns_last_ts.get(campaign[self._campaign_id],
-                                                                  self._default_campaign_last_ts)
+            campaign_last_ts = self._active_campaign_last_ts.get(campaign[self._campaign_id],
+                                                                 self._default_campaign_last_ts)
             last_watermark: datetime = datetime.strptime(
                 campaign_last_ts.get(self._api_action, self._default_campaign_last_ts[self._api_action]),
                 self._datetime_format)
@@ -195,7 +196,11 @@ class ActiveCampaignsDeltaOperator(ActiveCampaignsBaseOperator):
                             # if we have not reached the last ts (previous execution)
                             timestamp = row.get('tstamp', None)
                             if not timestamp:
-                                timestamp = row['info'][0]['tstamp']
+                                info = row['info']
+                                if info:
+                                    timestamp = info[0]['tstamp']
+                                else:
+                                    timestamp = self._default_start_time
                             record_time: datetime = datetime.strptime(timestamp, self._datetime_format)
                             # update the variable with highest timestamp
                             if record_time > high_ts:
@@ -212,41 +217,41 @@ class ActiveCampaignsDeltaOperator(ActiveCampaignsBaseOperator):
                 self._save_last_ts(campaign[self._campaign_id], datetime.strftime(high_ts, self._datetime_format))
 
     def _save_last_ts(self, campaign_id: str, last_ts: str) -> None:
-        campaign_last_ts = self._active_campaigns_last_ts.get(campaign_id, {})
+        campaign_last_ts = self._active_campaign_last_ts.get(campaign_id, {})
         campaign_last_ts.update({self._api_action: last_ts})
-        self._active_campaigns_last_ts.update({campaign_id: campaign_last_ts})
-        ## Variable.set('active_campaigns_last_ts', self._active_campaigns_last_ts, deserialize_json=True)
-        self.log.info('setting active_campaigns_last_ts -> {}'.format(json.dumps(self._active_campaigns_last_ts)))
+        self._active_campaign_last_ts.update({campaign_id: campaign_last_ts})
+        ## Variable.set('active_campaign_last_ts', self._active_campaign_last_ts, deserialize_json=True)
+        self.log.info('setting active_campaign_last_ts -> {}'.format(json.dumps(self._active_campaign_last_ts)))
 
 
 def main():
-    tasks = json.loads(os.getenv('ACTIVE_CAMPAIGNS_TASKS'))
+    tasks = json.loads(os.getenv('ACTIVE_CAMPAIGN_TASKS'))
 
     task = tasks.pop(0)
     task_id = task['data_point']
     # make sure it's campaigns - we need the output of the IDs for later
     assert (task_id == 'campaigns')
-    ac = ActiveCampaignsCampaignOperator(api_prefix=task['api_prefix'],
-                                         data_point=task.get('data_point', None),
-                                         api_action=task.get('api_action', None),
-                                         sort_key=task.get('sort_key', None))
+    ac = ActiveCampaignCampaignOperator(api_prefix=task['api_prefix'],
+                                        data_point=task.get('data_point', None),
+                                        api_action=task.get('api_action', None),
+                                        sort_key=task.get('sort_key', None))
     ac.execute()
     for task in tasks:
         task_id = task['api_action']
-        ac = ActiveCampaignsDeltaOperator(api_prefix=task['api_prefix'],
-                                          data_point=task.get('data_point', None),
-                                          api_action=task.get('api_action', None),
-                                          sort_key=task.get('sort_key', None))
+        ac = ActiveCampaignDeltaOperator(api_prefix=task['api_prefix'],
+                                         data_point=task.get('data_point', None),
+                                         api_action=task.get('api_action', None),
+                                         sort_key=task.get('sort_key', None))
         ac.execute()
 
-    # if _active_campaigns_last_ts:
+    # if _active_campaign_last_ts:
     #     f = open(".env", "r+")
     #     lines = f.readlines()
     #     if lines:
     #         w = open("env", "w+")
     #         for line in lines:
     #             w.write(line)
-    #         w.write('ACTIVE_CAMPAIGNS_LAST_TS={}'.format(json.dumps(_active_campaigns_last_ts)))
+    #         w.write('active_campaign_LAST_TS={}'.format(json.dumps(_active_campaign_last_ts)))
     #         w.close()
     #     f.close()
 
