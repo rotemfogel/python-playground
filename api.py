@@ -1,5 +1,7 @@
 import json
 import os
+import shutil
+from copy import deepcopy
 from datetime import datetime
 
 import requests
@@ -11,20 +13,36 @@ from pendulum import Pendulum
 load_dotenv(find_dotenv())
 _endpoint = os.getenv('ENDPOINT')
 _secret = os.getenv('SECRET')
+_active_conf: str = os.getenv('ACTIVE_CAMPAIGN_CONF')
 _data_bucket = os.getenv('DATA_BUCKET')
 _active_last_ts: str = os.getenv('ACTIVE_CAMPAIGN_LAST_TS')
 _campaign_ids: list = json.loads(os.getenv('CAMPAIGN_IDS'))
 
 
+def _update_env_file(param: str, data: any) -> None:
+    src = '.env'
+    trg = '.env.new'
+    f = open(src, 'r')
+    lines = f.readlines()
+    if lines:
+        w = open(trg, 'w+')
+        for line in lines:
+            prm = line.split('=')[0]
+            if prm == param:
+                w.write('{}={}'.format(param, json.dumps(data)))
+            else:
+                w.write(line)
+        w.close()
+    f.close()
+    shutil.move(trg, src)
+
+
 class ActiveCampaignBaseOperator(LoggingMixin):
-    _schema = {'db_report': 'dbr'}
     _bucket = _data_bucket
-    _database = _schema['db_report']
-    _active_campaign_conf = {
-        'endpoint': _endpoint,
-        'secret': _secret
-    }
-    _active_campaign_last_ts: dict = json.loads(_active_last_ts or {})
+    _database = 'active_campaign'
+
+    _active_campaign_conf: dict = json.loads(_active_conf)
+    _active_campaign_last_ts: dict = json.loads(_active_last_ts or '{}')
     _datetime_format = '%Y-%m-%d %H:%M:%S'
 
     _campaign_id = 'campaignid'
@@ -72,39 +90,38 @@ class ActiveCampaignBaseOperator(LoggingMixin):
         return json_response.get(self._data_point, []) if self._data_point else json_response
 
     def _save(self, context, records: list) -> None:
-        if records:
-            api_action = self._api_action
-            execution_date = context['ti'].execution_date if context else Pendulum.now()
-            full_date = execution_date.format('%Y-%m-%dT%H:%M:%S')
-            date = execution_date.format('%Y-%m-%d')
-            if self._last_ts_ind:
-                hour = execution_date.format('%H')
-                uri: str = 's3://{bucket}/{schema}/{table}/' \
-                           'date_={date}/hour={hour}/{file_name}.json.gz'.format(bucket=self._bucket,
-                                                                                 schema=self._database,
-                                                                                 table=self._api_action,
-                                                                                 date=date,
-                                                                                 hour=hour,
-                                                                                 file_name='{}_{}'.format(
-                                                                                     self._api_action, full_date))
-            else:
-                # get then last uri path (i.e. /a/b/c -> c)
-                api_action = self._api_prefix.split('/')[-1]
-                uri: str = 's3://{bucket}/{schema}/{table}/' \
-                           'date_={date}/{file_name}.json.gz'.format(bucket=self._bucket,
-                                                                     schema=self._database,
-                                                                     table=api_action,
-                                                                     date=date,
-                                                                     file_name=api_action)
+        api_action = self._api_action
+        execution_date = context['ti'].execution_date if context else Pendulum.now()
+        full_date = execution_date.format('%Y-%m-%dT%H:%M:%S')
+        date = execution_date.format('%Y-%m-%d')
+        if self._last_ts_ind:
+            hour = execution_date.format('%H')
+            uri: str = 's3://{bucket}/{schema}/{table}/' \
+                       'date_={date}/hour={hour}/{file_name}.json.gz'.format(bucket=self._bucket,
+                                                                             schema=self._database,
+                                                                             table=self._api_action,
+                                                                             date=date,
+                                                                             hour=hour,
+                                                                             file_name='{}_{}'.format(
+                                                                                 self._api_action, full_date))
+        else:
+            # get then last uri path (i.e. /a/b/c -> c)
+            api_action = self._api_prefix.split('/')[-1]
+            uri: str = 's3://{bucket}/{schema}/{table}/' \
+                       'date_={date}/{file_name}.json.gz'.format(bucket=self._bucket,
+                                                                 schema=self._database,
+                                                                 table=api_action,
+                                                                 date=date,
+                                                                 file_name=api_action)
 
-            with smart_open.open(uri=uri, mode='wb') as s3_file:
-                self.log.info('About to write response to {}'.format(uri))
-                for record in records:
-                    if not record:
-                        continue
-                    s3_file.write((json.dumps(record) + '\n').encode())
+        with smart_open.open(uri=uri, mode='wb') as s3_file:
+            self.log.info('About to write response to {}'.format(uri))
+            for record in records:
+                if not record:
+                    continue
+                s3_file.write((json.dumps(record) + '\n').encode())
 
-                self.log.info('Uploaded {} to S3'.format(api_action))
+            self.log.info('Uploaded {} to S3'.format(api_action))
 
 
 class ActiveCampaignCampaignOperator(ActiveCampaignBaseOperator):
@@ -127,7 +144,8 @@ class ActiveCampaignCampaignOperator(ActiveCampaignBaseOperator):
             if row:
                 records.append(row)
 
-        self._save(context, records)
+        ## if records:
+        ##    self._save(context, records)
 
         # get the campaign messages from the campaigns
         ##  campaign_ids = []
@@ -140,11 +158,15 @@ class ActiveCampaignCampaignOperator(ActiveCampaignBaseOperator):
             row = self._get_records(endpoint, params)
             if row:
                 ## campaign_ids.append({self._campaign_id: row[self._campaign_id],
-                _campaign_ids.append({self._campaign_id: row[self._campaign_id],
-                                      self._message_id: row[self._message_id]})
+                found: bool = list(filter(
+                    lambda x: x[self._campaign_id] == row[self._campaign_id] and x[self._message_id] == row[
+                        self._message_id], _campaign_ids))
+                if not found:
+                    _campaign_ids.append({self._campaign_id: row[self._campaign_id],
+                                          self._message_id: row[self._message_id]})
 
-        ## if campaign_ids:
-        ##   context['ti'].xcom_push(key=super().dag_id, value=campaign_ids)
+        if _campaign_ids:
+            _update_env_file('CAMPAIGN_IDS', _campaign_ids)
 
 
 class ActiveCampaignDeltaOperator(ActiveCampaignBaseOperator):
@@ -173,11 +195,12 @@ class ActiveCampaignDeltaOperator(ActiveCampaignBaseOperator):
             # get the last watermark for the campaign/api
             campaign_last_ts = self._active_campaign_last_ts.get(campaign[self._campaign_id],
                                                                  self._default_campaign_last_ts)
+            # convert to datetime
             last_watermark: datetime = datetime.strptime(
                 campaign_last_ts.get(self._api_action, self._default_campaign_last_ts[self._api_action]),
                 self._datetime_format)
-            # set the highest ts to last watermark
-            high_ts = last_watermark
+            # copy the highest ts to last watermark
+            high_ts = deepcopy(last_watermark)
             while True:
                 self.log.info('getting data for campaign: {}, message: {}, offset: {}, limit: {}'.format(
                     campaign[self._campaign_id],
@@ -207,12 +230,15 @@ class ActiveCampaignDeltaOperator(ActiveCampaignBaseOperator):
                                 high_ts = record_time
                             if record_time <= last_watermark:
                                 break
+                            row.update({self._campaign_id: campaign[self._campaign_id],
+                                        self._message_id: campaign[self._message_id]})
                             records.append(row)
                 if len(keys) < limit:
                     break
                 offset += limit
             # save the campaign result
-            self._save(context, records)
+            if records:
+                self._save(context, records)
             if high_ts > last_watermark:
                 self._save_last_ts(campaign[self._campaign_id], datetime.strftime(high_ts, self._datetime_format))
 
@@ -220,6 +246,7 @@ class ActiveCampaignDeltaOperator(ActiveCampaignBaseOperator):
         campaign_last_ts = self._active_campaign_last_ts.get(campaign_id, {})
         campaign_last_ts.update({self._api_action: last_ts})
         self._active_campaign_last_ts.update({campaign_id: campaign_last_ts})
+        _update_env_file('ACTIVE_CAMPAIGN_LAST_TS', self._active_campaign_last_ts)
         ## Variable.set('active_campaign_last_ts', self._active_campaign_last_ts, deserialize_json=True)
         self.log.info('setting active_campaign_last_ts -> {}'.format(json.dumps(self._active_campaign_last_ts)))
 
@@ -243,17 +270,6 @@ def main():
                                          api_action=task.get('api_action', None),
                                          sort_key=task.get('sort_key', None))
         ac.execute()
-
-    # if _active_campaign_last_ts:
-    #     f = open(".env", "r+")
-    #     lines = f.readlines()
-    #     if lines:
-    #         w = open("env", "w+")
-    #         for line in lines:
-    #             w.write(line)
-    #         w.write('active_campaign_LAST_TS={}'.format(json.dumps(_active_campaign_last_ts)))
-    #         w.close()
-    #     f.close()
 
 
 if __name__ == '__main__':
