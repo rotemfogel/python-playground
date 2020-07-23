@@ -6,6 +6,12 @@ from datetime import datetime
 root_dir = '/tmp/sendgrid'
 
 
+def fact(n: int) -> int:
+    if n <= 1:
+        return n
+    return n * fact(n - 1)
+
+
 def traverse(dir):
     for dir_name, sub_dir_last, file_list in os.walk(dir):
         print('Found directory: %s' % dir_name)
@@ -27,4 +33,5 @@ def traverse(dir):
                             out.write(line)
 
 
+f = fact(5)
 traverse(root_dir)

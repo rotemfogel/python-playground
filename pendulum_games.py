@@ -99,15 +99,36 @@ def other_fn(execution_date):
     return _find_closest_hour(execution_date, arr)
 
 
-n = Pendulum(year=2020, month=4, day=22, minute=25)
+_last_post_diff = 15
+
+
+def foo(execution_date: Pendulum,
+        last_post_date: Pendulum):
+    empty_slots = 0
+    should_post = empty_slots == 0
+    diff_passed = execution_date.subtract(minutes=_last_post_diff) >= last_post_date
+    # if enough time passed since the last post,
+    # or it's the first time it ran, save the current time
+    return should_post and diff_passed
+
+
+now = Pendulum(year=2020, month=4, day=22, minute=25)
+
+for i in range(5):
+    p = now.add(minutes=i * 5)
+    r = foo(p, now)
+    print("{} -> {}".format(p, r))
+
+print("")
+
 for i in range(23):
-    p = n.add(hours=i)
+    p = now.add(hours=i)
     r = mariadb_fn(p)
     print("{} -> {}".format(p, r))
 
-# print("")
-#
-# for i in range(23):
-#     p = n.add(hours=i)
-#     r = other_fn(p)
-#     print("{} -> {}".format(p, r))
+print("")
+
+for i in range(23):
+    p = now.add(hours=i)
+    r = other_fn(p)
+    print("{} -> {}".format(p, r))
