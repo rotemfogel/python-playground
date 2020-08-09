@@ -1,5 +1,3 @@
-import time
-
 import boto3
 
 
@@ -36,19 +34,19 @@ for line in lines:
 
     execution_id = execution['QueryExecutionId']
     state = 'RUNNING'
-    c = True
-    while c and state in ['RUNNING']:
+    while state in ['RUNNING']:
         response = client.get_query_execution(QueryExecutionId=execution_id)
         state = response['QueryExecution']['Status']['State']
+        statistics = response['QueryExecution']['Statistics']
+        print('id: {}, state: {}, {} millis'.format(execution_id, state, statistics['TotalExecutionTimeInMillis']))
         if state == 'FAILED':
             change_reason = str(response['QueryExecution']['Status']['StateChangeReason'])
             if 'Partition already exists' in change_reason:
-                c = False
+                print('{}: partition already exists', params['query'])
                 break
-        statistics = response['QueryExecution']['Statistics']
-        if state == 'FAILED':
-            c = False
+            else:
+                print(change_reason)
+                break
         elif state == 'SUCCEEDED':
-            c = False
-        print('state: {}, {} millis'.format(state, statistics['TotalExecutionTimeInMillis']))
-        time.sleep(1)
+            break
+        # time.sleep(1)
