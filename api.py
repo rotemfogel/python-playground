@@ -91,7 +91,7 @@ class ActiveCampaignBaseOperator(LoggingMixin):
 
     def _save(self, context, records: list) -> None:
         api_action = self._api_action
-        execution_date = context['ti'].execution_date if context else Pendulum.now()
+        execution_date = context['ti'].exec_date if context else Pendulum.now()
         full_date = execution_date.format('%Y-%m-%dT%H:%M:%S')
         date = execution_date.format('%Y-%m-%d')
         if self._last_ts_ind:

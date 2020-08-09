@@ -22,7 +22,7 @@ def _read_from_s3(uri: str) -> list:
 def _restore_variables() -> None:
     uri = 's3://{bucket}/airflow-backup/{env}/date_={date}/{what}.json.gz'.format(bucket=data_bucket,
                                                                                   env=env,
-                                                                                  date=execution_date,
+                                                                                  date=exec_date,
                                                                                   what='variables', )
 
     raw_variables = _read_from_s3(uri)
@@ -34,7 +34,7 @@ def _restore_variables() -> None:
     print("Restored Airflow [{env}] {len} variables from S3 ({uri})".format(env=env, len=len(variables), uri=uri))
 
 
-def _restore_connections() -> None:
+def _restore_connections(execution_date: str) -> None:
     uri = 's3://{bucket}/airflow-backup/{env}/date_={date}/{what}.json.gz'.format(bucket=data_bucket,
                                                                                   env=env,
                                                                                   date=execution_date,
@@ -104,6 +104,6 @@ def _restore_connections() -> None:
         print("Restored Airflow [{env}] {len} connections from S3 ({uri})".format(env=env, len=restored, uri=uri))
 
 
-execution_date = "2020-06-03"
-_restore_variables(execution_date)
-_restore_connections(execution_date)
+exec_date = "2020-06-03"
+_restore_variables(exec_date)
+_restore_connections(exec_date)

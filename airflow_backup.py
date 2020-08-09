@@ -35,7 +35,7 @@ def _backup_variables() -> None:
     print("Backed up Airflow [{env}] variables to S3 ({uri})".format(env=env, uri=uri))
 
 
-def _backup_connections() -> None:
+def _backup_connections(execution_date: str) -> None:
     connections = session.query(Connection).all()
     records = []
     for connection in connections:
@@ -62,6 +62,5 @@ def _backup_connections() -> None:
     print("Backed up Airflow [{env}] connections to S3 ({uri})".format(env=env, uri=uri))
 
 
-execution_date = "2020-06-03"
-# _backup_variables(execution_date)
-_backup_connections(execution_date)
+exec_date = "2020-06-03"
+_backup_connections(exec_date)
