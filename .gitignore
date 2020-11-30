@@ -7,4 +7,4 @@
 /tests/logs
 *.log
 .env
-partitioner/*.sql
+*.json
