@@ -90,9 +90,11 @@ class ColumnDef(BaseColumnDef):
                  name: str,
                  ordinal_position: int,
                  data_type: str,
+                 data_length: str,
                  mapping: dict = None):
         super(ColumnDef, self).__init__(name, ordinal_position)
         self.data_type: str = data_type
+        self.data_length: str = data_length
         self.mapping = mapping if mapping else DataTypeConverter.get_mapping(data_type)
 
     @classmethod
@@ -105,6 +107,7 @@ class ColumnDef(BaseColumnDef):
             {
                 'name': data['name'],
                 'data_type': data['data_type'],
+                'data_length': data['data_length'],
                 'ordinal_position': data['ordinal_position']
             })
 
@@ -159,7 +162,8 @@ class TableDef(object):
     def to_glue(self, database: str) -> dict:
         glue_columns = list(
             map(lambda x: {'Name': x.name,
-                           'Type': x.mapping[DatabaseType.GLUE]
+                           'Type': x.mapping[DatabaseType.GLUE],
+                           'Comment': x.data_length,
                            }, self.columns))
 
         columns = TableDef._to_json(self.columns)
