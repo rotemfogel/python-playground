@@ -1,7 +1,7 @@
 import json
 from abc import ABC
 from contextlib import closing
-from typing import List
+from typing import List, Optional
 
 import MySQLdb
 import boto3
@@ -72,6 +72,12 @@ class BaseColumnDef(object):
         self.name: str = name
         self.ordinal_position: int = ordinal_position
 
+    def __eq__(self, other):
+        if isinstance(other, BaseColumnDef):
+            return self.name == other.name and \
+                   self.ordinal_position == other.ordinal_position
+        return False
+
     @classmethod
     def from_query(cls, data: dict):
         return cls.from_json(
@@ -97,6 +103,15 @@ class ColumnDef(BaseColumnDef):
         self.data_length: str = data_length
         self.mapping = mapping if mapping else DataTypeConverter.get_mapping(data_type)
 
+    def __eq__(self, other):
+        if isinstance(other, ColumnDef):
+            return self.name == other.name and \
+                   self.ordinal_position == other.ordinal_position and \
+                   self.data_type == other.data_type and \
+                   self.data_length == other.data_length and \
+                   self.mapping == other.mapping
+        return False
+
     @classmethod
     def from_json(cls, data: dict):
         return cls(**data)
@@ -113,6 +128,8 @@ class ColumnDef(BaseColumnDef):
 
 
 class TableDef(object):
+    _parquet_package: str = 'org.apache.hadoop.hive.ql.io.parquet'
+
     def __init__(self,
                  name: str,
                  columns: List[ColumnDef],
@@ -122,6 +139,21 @@ class TableDef(object):
         self.columns = columns
         self.primary_keys = primary_keys
         self.unique_keys = unique_keys
+
+    def __eq__(self, other):
+        def compare(l1, l2) -> bool:
+            _l1 = l1 if l1 else []
+            _l2 = l2 if l2 else []
+            if len(_l1) == len(_l2):
+                return all(map(lambda x, y: x == y, _l1, _l2))
+            return False
+
+        if isinstance(other, TableDef):
+            return self.name == other.name and \
+                   compare(self.columns, other.columns) and \
+                   compare(self.primary_keys, other.primary_keys) and \
+                   compare(self.unique_keys, other.unique_keys)
+        return False
 
     @classmethod
     def from_json(cls, data):
@@ -162,8 +194,8 @@ class TableDef(object):
     def to_glue(self, database: str) -> dict:
         glue_columns = list(
             map(lambda x: {'Name': x.name,
-                           'Type': x.mapping[DatabaseType.GLUE],
-                           'Comment': x.data_length,
+                           'Type': x.mapping[DatabaseType.GLUE] + (
+                               f'({x.data_length})' if len(x.data_length) > 0 else '')
                            }, self.columns))
 
         columns = TableDef._to_json(self.columns)
@@ -174,9 +206,16 @@ class TableDef(object):
             'StorageDescriptor': {
                 'Columns': glue_columns,
                 'Location': f'{database}.{self.name}',
+                'InputFormat': f'{self._parquet_package}.MapredParquetInputFormat',
+                'OutputFormat': f'{self._parquet_package}.MapredParquetOutputFormat',
                 'Compressed': False,
                 'NumberOfBuckets': -1,
-                'SerdeInfo': {'Parameters': {}},
+                'SerdeInfo': {
+                    'SerializationLibrary': f'{self._parquet_package}.serde.ParquetHiveSerDe',
+                    'Parameters': {
+                        'serialization.format': '1'
+                    }
+                },
                 'BucketColumns': [],
                 'SortColumns': [],
                 'StoredAsSubDirectories': False,
@@ -242,22 +281,16 @@ def _query(sql: str,
 _hook = boto3.session.Session(region_name='us-west-2').client('glue')
 
 
-def _get_table(db: str, table: str) -> TableDef:
-    table = _hook.get_table(DatabaseName=db, Name=table)
-    return TableDef.from_glue(table)
-
-
-def _drop_table(db: str, table: str):
-    # drop table if exists
+def _get_table(db: str, table_name: str) -> Optional[TableDef]:
     try:
-        _hook.delete_table(DatabaseName=db,
-                           Name=table)
+        table_def = _hook.get_table(DatabaseName=db,
+                                    Name=table_name)
+        return TableDef.from_glue(table_def)
     except Exception as err:
         if 'EntityNotFoundException' in str(err):
-            pass
+            return None
         else:
-            print("delete_table found an error : |" + str(err))
-            raise AirflowException("|\n\nManual Exception, with delete_table. the Exception is: " + str(err))
+            _raise_error('_get_table', err)
 
 
 def _create_table(db: str, table_def: TableDef):
@@ -265,12 +298,27 @@ def _create_table(db: str, table_def: TableDef):
     try:
         _hook.create_table(DatabaseName=db,
                            TableInput=table_input)
+        print(f'created table {db}.{table_def.name}')
     except Exception as err:
         if 'AlreadyExistsException' in str(err):
             pass
         else:
-            print("create_table found an error : " + str(err))
-            raise AirflowException("|\n\nManual Exception, with delete_table. the Exception is: " + str(err))
+            _raise_error('_create_table', err)
+
+
+def _update_table(db: str, table_def: TableDef):
+    table_input = table_def.to_glue(db)
+    try:
+        _hook.update_table(DatabaseName=db,
+                           TableInput=table_input)
+        print(f'updated table {db}.{table_def.name}')
+    except Exception as err:
+        _raise_error('_update_table', err)
+
+
+def _raise_error(method: str, err: Exception):
+    print(f'{method} found an error : ' + str(err))
+    raise AirflowException(f'|\n\nManual Exception, with {method}. the Exception is: ' + str(err))
 
 
 production_db = "seekingalpha_production"
@@ -278,20 +326,29 @@ production_db = "seekingalpha_production"
 
 def _create_glue_table(s: str) -> None:
     table_def = TableDef.from_json(json.loads(s))
-    _drop_table(production_db, table_def.name)
-    _create_table(production_db, table_def)
     table = _get_table(production_db, table_def.name)
+    if table:
+        if table_def == table:
+            print(f'skipping table {table_def.name}')
+        else:
+            _update_table(production_db, table_def)
+    else:
+        _create_table(production_db, table_def)
     print(json.dumps(table, default=lambda o: o.__dict__, indent=2))
 
 
 _session_variables = {'group_concat_max_len': 1000000}
 if __name__ == '__main__':
-    with open('mysql_schema_dump.sql') as m:
-        query = m.read()
-    raw_records = _query(query, _session_variables)
-    _write(raw_records, 'records.json')
-    _write(raw_records, 'tables.json', TableDef.from_query)
+    # _get_table('dbr', 'active_users_table')
+
+    # with open('mysql_schema_dump.sql') as m:
+    #     query = m.read()
+    # raw_records = _query(query, _session_variables)
+    # _write(raw_records, 'records.json')
+    # _write(raw_records, 'tables.json', TableDef.from_query)
     with open('tables.json', 'r') as r:
         lines = r.read().split('\n')
-        for the_line in lines:
-            _create_glue_table(the_line)
+        for line in lines:
+            # line = lines[-1]
+            if line:
+                _create_glue_table(line)
