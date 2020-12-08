@@ -46,7 +46,7 @@ class DataTypeConverter(ABC):
         'datetime': {DatabaseType.GLUE: 'TIMESTAMP', DatabaseType.VERTICA: 'TIMESTAMP'},
         # characters
         'char': {DatabaseType.GLUE: 'CHAR', DatabaseType.VERTICA: 'CHAR'},
-        'varchar': {DatabaseType.GLUE: 'VARCHAR', DatabaseType.VERTICA: 'VARCHAR'},
+        'varchar': {DatabaseType.GLUE: 'STRING', DatabaseType.VERTICA: 'VARCHAR'},
         'text': {DatabaseType.GLUE: 'STRING', DatabaseType.VERTICA: 'VARCHAR'},
         'tinytext': {DatabaseType.GLUE: 'STRING', DatabaseType.VERTICA: 'VARCHAR'},
         'longblob': {DatabaseType.GLUE: 'STRING', DatabaseType.VERTICA: 'VARCHAR'},
@@ -195,7 +195,8 @@ class TableDef(object):
         glue_columns = list(
             map(lambda x: {'Name': x.name,
                            'Type': x.mapping[DatabaseType.GLUE] + (
-                               f'({x.data_length})' if len(x.data_length) > 0 else '')
+                               f'({x.data_length})' if x.mapping[DatabaseType.GLUE] != 'STRING' and len(
+                                   x.data_length) > 0 else '')
                            }, self.columns))
 
         columns = TableDef._to_json(self.columns)
