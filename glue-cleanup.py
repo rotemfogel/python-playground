@@ -2,6 +2,7 @@ import boto3
 
 _glue_hook = boto3.Session(profile_name='default', region_name='us-west-2').client('glue')
 chunk_size = 100
+_dry_run = True
 
 
 def _get(operation: str,
@@ -13,12 +14,25 @@ def _get(operation: str,
     results = list()
     for page in response:
         for key in page[page_key]:
-            value = key[value_key]
-            if type(value) == list:
-                results.extend(key[value_key])
+            if value_key:
+                value = key[value_key]
+                if type(value) == list:
+                    results.extend(key[value_key])
+                else:
+                    results.append(key[value_key])
             else:
-                results.append(key[value_key])
+                results.append(key)
     return results
+
+
+def _get_database(db: str) -> dict:
+    try:
+        args = {'Name': db}
+        return _glue_hook.get_database(**args)
+    except Exception as e:
+        if 'EntityNotFoundException' in str(e):
+            return None
+        raise e
 
 
 def _get_databases() -> list:
@@ -35,7 +49,7 @@ def _get_partitions(db: str, table: str) -> list:
         'DatabaseName': db,
         'TableName': table
     }
-    return _get('get_partitions', 'Partitions', 'Values', **args)
+    return _get('get_partitions', 'Partitions', value_key=None, **args)
 
 
 def _get_versions(db: str, table: str) -> list:
@@ -47,30 +61,36 @@ def _get_versions(db: str, table: str) -> list:
 
 
 def _clear_table(db: str, table: str) -> None:
+    # partitions = _get_partitions(db, table)
+    # print(f'{db}.{table} has {len(partitions)} partitions')
     versions = sorted(list(map(lambda x: int(x), _get_versions(db, table))))
     if len(versions) > chunk_size:
         versions_to_drop = versions[:-chunk_size]
         version_chunks = [versions_to_drop[i * chunk_size:(i + 1) * chunk_size] for i in
                           range((len(versions_to_drop) + chunk_size - 1) // chunk_size)]
         for chunk in version_chunks:
-            _glue_hook.batch_delete_table_version(
-                DatabaseName=db,
-                TableName=table,
-                VersionIds=list(map(lambda x: str(x), chunk))
-            )
-        print(f'dropped {len(versions_to_drop)} versions out of {len(versions)} from table {db}.{table}')
+            if not _dry_run:
+                _glue_hook.batch_delete_table_version(
+                    DatabaseName=db,
+                    TableName=table,
+                    VersionIds=list(map(lambda x: str(x), chunk))
+                )
+                print(f'dropped {len(versions_to_drop)} versions out of {len(versions)} from table {db}.{table}')
+            else:
+                print(f'skipping drop due to dryRun: {db}.{table} -> {chunk}')
 
 
 def _clear_tables(db: str) -> None:
-    tables = _get_tables(db)
+    tables = list(filter(lambda x: not str(x).startswith('tmp_'), _get_tables(db)))
     for table in tables:
         _clear_table(db, table)
 
 
 def execute():
-    databases = ['dba']  # sorted(_get_databases())
+    databases = sorted(_get_databases())
     for db in databases:
-        _clear_tables(db)
+        if _get_database(db):
+            _clear_tables(db)
 
 
 if __name__ == '__main__':
