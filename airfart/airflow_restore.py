@@ -1,4 +1,5 @@
 import json
+from typing import Optional
 
 from airflow import settings
 from airflow.models import Variable, Connection
@@ -19,10 +20,10 @@ def _read_from_s3(uri: str) -> list:
     return records
 
 
-def _restore_variables() -> None:
+def _restore_variables(execution_date: str) -> None:
     uri = 's3://{bucket}/airflow-backup/{env}/date_={date}/{what}.json.gz'.format(bucket=data_bucket,
                                                                                   env=env,
-                                                                                  date=exec_date,
+                                                                                  date=execution_date,
                                                                                   what='variables', )
 
     raw_variables = _read_from_s3(uri)
@@ -50,38 +51,38 @@ def _restore_connections(execution_date: str) -> None:
         #     session.delete(conn)
         #     session.commit()
 
-        password: str = None
+        password: Optional[str] = None
         try:
             if connection['password']:
                 password = fernet.decrypt(bytes(connection['password'], 'utf-8')).decode('utf-8')
         except KeyError:
             pass
-        port: int = None
+        port: Optional[int] = None
         try:
             port = connection['port']
         except KeyError:
             pass
-        host: str = None
+        host: Optional[str] = None
         try:
             host = connection['host']
         except KeyError:
             pass
-        login: str = None
+        login: Optional[str] = None
         try:
             login = connection['login']
         except KeyError:
             pass
-        schema: str = None
+        schema: Optional[str] = None
         try:
             schema = connection['schema']
         except KeyError:
             pass
-        extra: str = None
+        extra: Optional[str] = None
         try:
             extra = connection['extra']
         except KeyError:
             pass
-        uri: str = None
+        uri: Optional[str] = None
         try:
             uri = connection['uri']
         except KeyError:
