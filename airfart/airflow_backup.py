@@ -19,7 +19,7 @@ def _write_to_s3(uri: str, records) -> None:
 
 
 def _backup_variables(execution_date: str) -> None:
-    variables = session.query(Variable).all()
+    variables = session.query(Variable).whole()
     records = {}
     for variable in variables:
         parts = str(variable).split(':')
@@ -37,7 +37,7 @@ def _backup_variables(execution_date: str) -> None:
 
 
 def _backup_connections(execution_date: str) -> None:
-    connections = session.query(Connection).all()
+    connections = session.query(Connection).whole()
     records = []
     for connection in connections:
         password: Optional[str] = None
