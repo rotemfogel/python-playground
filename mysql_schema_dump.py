@@ -32,28 +32,28 @@ class DatabaseType(object):
 class DataTypeConverter(ABC):
     _mapping = {
         # numerics
-        'bigint': {DatabaseType.GLUE: 'BIGINT', DatabaseType.VERTICA: 'BIGINT'},
-        'decimal': {DatabaseType.GLUE: 'DECIMAL', DatabaseType.VERTICA: 'DECIMAL'},
-        'double': {DatabaseType.GLUE: 'DOUBLE', DatabaseType.VERTICA: 'DOUBLE PRECISION'},
-        'float': {DatabaseType.GLUE: 'FLOAT', DatabaseType.VERTICA: 'FLOAT'},
-        'int': {DatabaseType.GLUE: 'INT', DatabaseType.VERTICA: 'INT'},
-        'mediumint': {DatabaseType.GLUE: 'INT', DatabaseType.VERTICA: 'INT'},
-        'smallint': {DatabaseType.GLUE: 'SMALLINT', DatabaseType.VERTICA: 'SMALLINT'},
-        'tinyint': {DatabaseType.GLUE: 'TINYINT', DatabaseType.VERTICA: 'TINYINT'},
+        'bigint': {DatabaseType.GLUE: 'bigint', DatabaseType.VERTICA: 'bigint'},
+        'decimal': {DatabaseType.GLUE: 'decimal', DatabaseType.VERTICA: 'decimal'},
+        'double': {DatabaseType.GLUE: 'double', DatabaseType.VERTICA: 'double precision'},
+        'float': {DatabaseType.GLUE: 'float', DatabaseType.VERTICA: 'float'},
+        'int': {DatabaseType.GLUE: 'int', DatabaseType.VERTICA: 'int'},
+        'mediumint': {DatabaseType.GLUE: 'int', DatabaseType.VERTICA: 'int'},
+        'smallint': {DatabaseType.GLUE: 'smallint', DatabaseType.VERTICA: 'smallint'},
+        'tinyint': {DatabaseType.GLUE: 'tinyint', DatabaseType.VERTICA: 'tinyint'},
         # dates
-        'date': {DatabaseType.GLUE: 'DATE', DatabaseType.VERTICA: 'DATE'},
-        'timestamp': {DatabaseType.GLUE: 'TIMESTAMP', DatabaseType.VERTICA: 'TIMESTAMP'},
-        'datetime': {DatabaseType.GLUE: 'TIMESTAMP', DatabaseType.VERTICA: 'TIMESTAMP'},
+        'date': {DatabaseType.GLUE: 'date', DatabaseType.VERTICA: 'date'},
+        'timestamp': {DatabaseType.GLUE: 'timestamp', DatabaseType.VERTICA: 'timestamp'},
+        'datetime': {DatabaseType.GLUE: 'timestamp', DatabaseType.VERTICA: 'timestamp'},
         # characters
-        'char': {DatabaseType.GLUE: 'CHAR', DatabaseType.VERTICA: 'CHAR'},
-        'varchar': {DatabaseType.GLUE: 'STRING', DatabaseType.VERTICA: 'VARCHAR'},
-        'text': {DatabaseType.GLUE: 'STRING', DatabaseType.VERTICA: 'VARCHAR'},
-        'tinytext': {DatabaseType.GLUE: 'STRING', DatabaseType.VERTICA: 'VARCHAR'},
-        'longblob': {DatabaseType.GLUE: 'STRING', DatabaseType.VERTICA: 'VARCHAR'},
-        'mediumtext': {DatabaseType.GLUE: 'STRING', DatabaseType.VERTICA: 'VARCHAR'},
-        'longtext': {DatabaseType.GLUE: 'STRING', DatabaseType.VERTICA: 'VARCHAR'},
+        'char': {DatabaseType.GLUE: 'char', DatabaseType.VERTICA: 'char'},
+        'varchar': {DatabaseType.GLUE: 'string', DatabaseType.VERTICA: 'varchar'},
+        'text': {DatabaseType.GLUE: 'string', DatabaseType.VERTICA: 'varchar'},
+        'tinytext': {DatabaseType.GLUE: 'string', DatabaseType.VERTICA: 'varchar'},
+        'longblob': {DatabaseType.GLUE: 'string', DatabaseType.VERTICA: 'varchar'},
+        'mediumtext': {DatabaseType.GLUE: 'string', DatabaseType.VERTICA: 'varchar'},
+        'longtext': {DatabaseType.GLUE: 'string', DatabaseType.VERTICA: 'varchar'},
         # specials
-        'enum': {DatabaseType.GLUE: 'STRING', DatabaseType.VERTICA: 'VARCHAR'}
+        'enum': {DatabaseType.GLUE: 'string', DatabaseType.VERTICA: 'varchar'}
     }
 
     @staticmethod
@@ -195,7 +195,7 @@ class TableDef(object):
         glue_columns = list(
             map(lambda x: {'Name': x.name,
                            'Type': x.mapping[DatabaseType.GLUE] + (
-                               f'({x.data_length})' if x.mapping[DatabaseType.GLUE] != 'STRING' and len(
+                               f'({x.data_length})' if x.mapping[DatabaseType.GLUE] != 'string' and len(
                                    x.data_length) > 0 else '')
                            }, self.columns))
 
@@ -307,6 +307,14 @@ def _create_table(db: str, table_def: TableDef):
             _raise_error('_create_table', err)
 
 
+def _drop_table(db: str, table_name: str):
+    try:
+        _hook.delete_table(DatabaseName=db,
+                           Name=table_name)
+    except Exception as err:
+        _raise_error('_drop_table', err)
+
+
 def _update_table(db: str, table_def: TableDef):
     table_input = table_def.to_glue(db)
     try:
@@ -325,8 +333,10 @@ def _raise_error(method: str, err: Exception):
 production_db = "seekingalpha_production"
 
 
-def _create_glue_table(s: str) -> None:
+def _create_glue_table(s: str, force: bool = False) -> None:
     table_def = TableDef.from_json(json.loads(s))
+    if force:
+        _drop_table(production_db, table_def.name)
     table = _get_table(production_db, table_def.name)
     if table:
         if table_def == table:
@@ -335,6 +345,7 @@ def _create_glue_table(s: str) -> None:
             _update_table(production_db, table_def)
     else:
         _create_table(production_db, table_def)
+        table = _get_table(production_db, table_def.name)
     print(json.dumps(table, default=lambda o: o.__dict__, indent=2))
 
 
@@ -346,10 +357,10 @@ if __name__ == '__main__':
     #     query = m.read()
     # raw_records = _query(query, _session_variables)
     # _write(raw_records, 'records.json')
-    # _write(raw_records, 'tables.json', TableDef.from_query)
-    with open('tables.json', 'r') as r:
+    raw_records = []
+    with open('mariadb_schema_dump.json', 'r') as r:
         lines = r.read().split('\n')
         for line in lines:
             # line = lines[-1]
             if line:
-                _create_glue_table(line)
+                _create_glue_table(line, force=True)
