@@ -3,18 +3,24 @@ name = "pypi"
 url = "https://pypi.org/simple"
 verify_ssl = true
 
-[[source]]
-url = "https://pip.astronomer.io/simple"
-verify_ssl = true
-name = "astronomer"
-
 [packages]
-astronomer-certified = { extras = ["celery", "crypto", "google_auth", "mysql", "postgres", "slack", "redis", "s3", "vertica", "statsd"], version = "==1.10.*" }
-# apache-airflow = {extras = ["celery", "crypto", "google_auth", "mysql", "postgres","slack", "redis", "s3", "vertica", "statsd"],version = "==1.10.9"}
 boto = "*"
-boto3 = "*"
-smart_open = "*"
+vertica-python = "*"
+httplib2 = "*"
 google-api-core = "*"
 google-api-python-client = "*"
-python-dotenv = "*"
-pymysql = "*"
+smart-open = "*"
+# freeze appstoreconnect on 0.8.3, due to dependency collision with PyJWT (requires 1.6.4, installed 1.7.1)
+appstoreconnect = "==0.8.3"
+pypd = "*"
+pyarrow = "*"
+
+[dev-packages]
+flake8 = "*"
+pylint = "*"
+nose = "*"
+coverage = "*"
+
+[packages.apache-airflow]
+extras = [ "celery", "crypto", "google_auth", "mysql", "postgres", "slack", "redis", "aws", "vertica", "statsd",]
+version = "==1.10.*"

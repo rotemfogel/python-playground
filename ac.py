@@ -63,11 +63,11 @@ class ActiveCampaignBaseOperator(ABC):
     def _save(self, context: dict, records: list) -> None:
         api_action = self._api_action
         execution_date = context['execution_date']
-        full_date = execution_date.format('%Y-%m-%dT%H:%M:%S')
-        date = execution_date.format('%Y-%m-%d')
+        full_date = execution_date.fmt('%Y-%m-%dT%H:%M:%S')
+        date = execution_date.fmt('%Y-%m-%d')
 
         if self._last_ts_ind:
-            hour = execution_date.format('%H')
+            hour = execution_date.fmt('%H')
             uri: str = 's3://{bucket}/{schema}/base_{table}/' \
                        'date_={date}/hour={hour}/{file_name}.json.gz'.format(bucket=self._bucket,
                                                                              schema=self._database,
