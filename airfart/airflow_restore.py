@@ -1,7 +1,7 @@
 import json
 from typing import Optional
 
-from airflow import settings
+# from airflow import settings
 from airflow.models import Variable, Connection
 from airflow.models.crypto import get_fernet
 from smart_open import open
@@ -9,7 +9,9 @@ from smart_open import open
 env = 'Local'
 data_bucket = 'my_bucket'
 fernet = get_fernet()
-session = settings.Session()
+
+
+# session = settings.Session()
 
 
 def _read_from_s3(uri: str) -> list:
@@ -98,13 +100,13 @@ def _restore_connections(execution_date: str) -> None:
             extra=extra,
             uri=uri
         )
-        session.merge(conn2save)
-        session.commit()
+        # session.merge(conn2save)
+        # session.commit()
         restored += 1
     if restored > 0:
         print("Restored Airflow [{env}] {len} connections from S3 ({uri})".format(env=env, len=restored, uri=uri))
 
 
-exec_date = "2020-06-03"
-_restore_variables(exec_date)
+exec_date = "2021-02-16"
 _restore_connections(exec_date)
+_restore_variables(exec_date)
