@@ -30,7 +30,7 @@ class S3ToGlueOperator:
         # strip leading trailing backslashes
         self.post_key_path = post_key_path.strip('/') if post_key_path else post_key_path
         self.database = database
-        self._hook = _glue_hook = boto3.Session(profile_name='default', region_name='us-west-2').client('glue')
+        self._hook = boto3.Session(profile_name='default', region_name='us-west-2').client('glue')
 
     def execute(self):
         # Asserting whether daily partitions are required or a rewritable file
