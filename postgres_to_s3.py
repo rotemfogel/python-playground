@@ -80,11 +80,11 @@ class PostgresToS3Operator:
 
 
 if __name__ == '__main__':
-    for output_format in [PostgresToS3Operator.CSV, PostgresToS3Operator.JSON]:
+    for out_format in [PostgresToS3Operator.CSV, PostgresToS3Operator.JSON]:
         PostgresToS3Operator(sql='select * from catalog_updates',
                              bucket='seekingalpha-data-dev',
                              database='test_dbr',
                              file_name='catalog_updates',
                              post_db_path='catalog_updates',
                              include_csv_headers=True,
-                             output_format=output_format).execute()
+                             output_format=out_format).execute()

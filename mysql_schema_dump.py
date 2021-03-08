@@ -11,6 +11,7 @@ from airflow import AirflowException
 class DatabaseType(object):
     VERTICA = 'vertica'
     GLUE = 'glue'
+    ATHENA = 'athena'
 
     _ALL_DATABASE_TYPES = set()
 
