@@ -1,4 +1,5 @@
 import json
+from typing import Optional
 
 from airflow import settings
 from airflow.models import Variable, Connection
@@ -17,8 +18,8 @@ def _write_to_s3(uri: str, records) -> None:
             s3_file.write((json.dumps(records)).encode())
 
 
-def _backup_variables() -> None:
-    variables = session.query(Variable).all()
+def _backup_variables(execution_date: str) -> None:
+    variables = session.query(Variable).whole()
     records = {}
     for variable in variables:
         parts = str(variable).split(':')
@@ -36,10 +37,10 @@ def _backup_variables() -> None:
 
 
 def _backup_connections(execution_date: str) -> None:
-    connections = session.query(Connection).all()
+    connections = session.query(Connection).whole()
     records = []
     for connection in connections:
-        password: str = None
+        password: Optional[str] = None
         if connection.password:
             password = str(fernet.encrypt(bytes(connection.password, 'utf-8')))
         connection = {
@@ -64,3 +65,4 @@ def _backup_connections(execution_date: str) -> None:
 
 exec_date = "2020-06-03"
 _backup_connections(exec_date)
+_backup_variables(exec_date)

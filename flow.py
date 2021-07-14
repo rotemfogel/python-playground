@@ -1,10 +1,9 @@
 import json
+
 from airflow import AirflowException
 from airflow import settings
 from airflow.hooks.http_hook import HttpHook
 from airflow.models import Variable, Connection
-from datetime import datetime
-from smart_open import open
 
 projects = Variable.get('delighted', deserialize_json=True)
 endpoint = '/v1/survey_responses.json'

@@ -7,4 +7,5 @@
 /tests/logs
 *.log
 .env
-partitioner/*.sql
+*.json
+/page_events.yaml
