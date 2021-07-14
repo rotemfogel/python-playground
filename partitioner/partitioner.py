@@ -11,14 +11,14 @@ _params = {
 }
 
 
-def athena_query(client):
+def athena_query(client, params):
     response = client.start_query_execution(
         QueryString=_params["query"],
         QueryExecutionContext={
             'Database': _params['database']
         },
         ResultConfiguration={
-            'OutputLocation': 's3://' + _params['bucket'] + '/' + _params['path']
+            'OutputLocation': 's3://' + params['bucket'] + '/' + params['path']
         }
     )
     return response
