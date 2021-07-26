@@ -1,5 +1,5 @@
 import re
-from typing import List
+from typing import List, Optional
 
 from pendulum import Pendulum, datetime
 
@@ -19,8 +19,15 @@ class FilterTables:
         self.filter_fn = filter_fn
         self.tables_to_remove = tables_to_remove if tables_to_remove else []
         self.fetch_tables = fetch_tables
+        self.hook: Optional[str] = None
+
+    def get_hook(self):
+        if not self.hook:
+            self.hook = 'hook'
+        return self.hook
 
     def execute(self) -> List[str]:
+
         if not self.tables_to_remove and self.fetch_tables:
             self.tables_to_remove = tables
 
@@ -67,3 +74,8 @@ if __name__ == "__main__":
     f_tables = f.execute()
     assert f_tables == filtered_tables
     print(f_tables)
+
+    h1 = f.get_hook()
+    h2 = f.get_hook()
+    assert (hex(id(h1)) == hex(id(h2)))
+    print(f'{hex(id(h1)), hex(id(h2))}')
