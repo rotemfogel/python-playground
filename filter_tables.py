@@ -12,18 +12,22 @@ class FilterTables:
     def __init__(self,
                  database: str,
                  tables_to_remove: List[str] = None,
-                 filter_fn=lambda tables_to_remove: tables_to_remove):
+                 filter_fn=lambda tables_to_remove: tables_to_remove,
+                 fetch_tables: bool = False):
         super(FilterTables, self).__init__()
         self.database = database
         self.filter_fn = filter_fn
         self.tables_to_remove = tables_to_remove if tables_to_remove else []
+        self.fetch_tables = fetch_tables
 
     def execute(self) -> List[str]:
-        # if no tables were provided, pull the table list
-        if not self.tables_to_remove:
+        if not self.tables_to_remove and self.fetch_tables:
             self.tables_to_remove = tables
-        # apply the filter function (won't do anything, if not declared)
-        return self.filter_fn(self.tables_to_remove)
+
+        if self.tables_to_remove:
+            # apply the filter function (won't do anything, if not declared)
+            return self.filter_fn(self.tables_to_remove)
+        return self.tables_to_remove
 
 
 def __match(today: Pendulum, table: str) -> (str, Pendulum):
@@ -40,19 +44,26 @@ def __filter_tmp_tables(table_list: List[str]) -> List[str]:
 
 
 if __name__ == "__main__":
+    # no tables provided and no fetch
     f = FilterTables(database='db')
     f_tables = f.execute()
+    assert f_tables == []
     print(f_tables)
-    assert f_tables == tables
+
+    # tables provided
     f = FilterTables(database='db', tables_to_remove=tables)
     f_tables = f.execute()
-    print(f_tables)
     assert f_tables == tables
+    print(f_tables)
+
+    # tables and filter provided
     f = FilterTables(database='db', tables_to_remove=tables, filter_fn=__filter_tmp_tables)
     f_tables = f.execute()
-    print(f_tables)
     assert f_tables == filtered_tables
-    f = FilterTables(database='db', filter_fn=__filter_tmp_tables)
+    print(f_tables)
+
+    # filter and fetch provided
+    f = FilterTables(database='db', filter_fn=__filter_tmp_tables, fetch_tables=True)
     f_tables = f.execute()
-    print(f_tables)
     assert f_tables == filtered_tables
+    print(f_tables)
