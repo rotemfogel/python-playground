@@ -10,12 +10,15 @@ def flat_map(f, xs):
     return ys
 
 
-alert_tasks: dict = {
-    'dags': {'emr_email_events': {'tasks': [{'copy': {}}]}, 'emr_page_events': {'tasks': [{'copy': {}}]},
-             'paying_subscriptions': {'from': 5, 'to': 21}, 'subscription_events': {},
-             'user_registration_trackings': {}, 'vertica_health_check': {
-            'tasks': [{'all_nodes_up': {}}, {'license_utilization': {'from': 5, 'to': 21}}]}},
-    'tasks': ['check_result', 'copy_qa', 'test_uniqueness']}
+alert_tasks: dict = {'dags': {'emr_email_events': {'tasks': [{'copy': {}}]},
+                              'emr_page_events': {'tasks': [{'partition_rollup_add_step': {}}]},
+                              'paying_subscriptions': {'from': 5, 'to': 21},
+                              'subscription_events': {'tasks': ['ccc', 'aaa']},
+                              'user_registration_trackings': {},
+                              'vertica_health_check': {'tasks': [{'all_nodes_up': {}},
+                                                                 {'license_utilization': {'from': 5,
+                                                                                          'to': 21}}]}},
+                     'tasks': ['check_result', 'copy_qa', 'test_uniqueness']}
 default_tasks = alert_tasks['tasks']
 
 
@@ -36,6 +39,8 @@ def report_to_pagerduty_with_conf(dag_id: str, task_id: str, execution_date: Pen
         if type(dag_tasks[0]) is dict:
             # join specific DAG tasks with the default tasks
             tasks_list = set(list(flat_map(lambda x: x.keys(), dag_tasks)) + default_tasks)
+        elif type(dag_tasks[0]) is str:
+            tasks_list = set(dag_tasks + default_tasks)
     except AttributeError:
         pass
 
@@ -64,9 +69,11 @@ def report_to_pagerduty_with_conf(dag_id: str, task_id: str, execution_date: Pen
 
 if __name__ == "__main__":
     execution_date = Pendulum.now()
-    print(report_to_pagerduty_with_conf(dag_id='user_registration_trackings', task_id='copy_qa',
-                                        execution_date=execution_date))
-    print(report_to_pagerduty_with_conf(dag_id='emr_page_events', task_id='copy_qa',
-                                        execution_date=execution_date))
-    print(report_to_pagerduty_with_conf(dag_id='vertica_health_check', task_id='all_nodes_up',
-                                        execution_date=execution_date))
+    assert (report_to_pagerduty_with_conf(dag_id='user_registration_trackings', task_id='copy_qa',
+                                          execution_date=execution_date))
+    assert (report_to_pagerduty_with_conf(dag_id='subscription_events', task_id='ccc',
+                                          execution_date=execution_date))
+    assert (report_to_pagerduty_with_conf(dag_id='emr_page_events', task_id='partition_rollup_add_step',
+                                          execution_date=execution_date))
+    assert (report_to_pagerduty_with_conf(dag_id='vertica_health_check', task_id='all_nodes_up',
+                                          execution_date=execution_date))
