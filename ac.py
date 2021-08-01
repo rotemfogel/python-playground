@@ -7,7 +7,7 @@ from datetime import timedelta, datetime
 import requests
 import smart_open
 from dotenv import load_dotenv
-from pendulum import Pendulum
+from pendulum import DateTime
 
 load_dotenv()
 
@@ -225,7 +225,7 @@ class ActiveCampaignDeltaOperator(ActiveCampaignBaseOperator):
 
 
 if __name__ == '__main__':
-    context = {'execution_date': Pendulum.now(),
+    context = {'execution_date': DateTime.now(),
                'campaign_ids': json.loads(os.getenv('CAMPAIGN_IDS'))}
     active_campaign_tasks = json.loads(os.getenv('ACTIVE_CAMPAIGN_TASKS'))
     active_campaign_tasks.pop(0)

@@ -1,5 +1,5 @@
 # Returns element closest to target in arr[]
-from pendulum import Pendulum
+from pendulum import DateTime
 
 
 def hourly_fn(execution_date):
@@ -7,7 +7,7 @@ def hourly_fn(execution_date):
     default function for sensors of daily DAGs that depend on hourly DAGs
     assuming the daily task runs at 05:25
     :param execution_date: the DAG execution date
-    :return: Pendulum
+    :return: DateTime
     """
 
     execution_date_transformed = execution_date.add(days=1)
@@ -30,7 +30,7 @@ def daily_fn(execution_date):
       for [2020-04-20 16:25:00] should be [2020-04-19 05:25:00]
       for [2020-04-20 04:25:00] should be [2020-04-18 05:25:00]
     :param execution_date: the DAG execution date
-    :return: Pendulum
+    :return: DateTime
     """
     hour = execution_date.hour
     closest_execution_date = execution_date.subtract(days=1).hour_(5).minute_(25).second_(0).microsecond_(0)
@@ -46,10 +46,10 @@ def _find_closest_hour(execution_date, hours):
     and finds the closest date to pass the sensor,
     assuming it is a recurring task based on list of hours.
     :param execution_date: the DAG execution date
-    :type: Pendulum
+    :type: DateTime
     :param hours: the list of hours to match
     :type: array of numbers
-    :return: Pendulum
+    :return: DateTime
     """
     hour = execution_date.hour
 
@@ -75,8 +75,8 @@ def mariadb_fn(execution_date):
     and calls the _find_closest_hour with specific
     mariadb list of hours.
     :param execution_date: the DAG execution date
-    :type: Pendulum
-    :return: Pendulum
+    :type: DateTime
+    :return: DateTime
     example:
       2020-04-22T00:25:00+00:00 -> 2020-04-21T23:25:00+00:00
       2020-04-22T01:25:00+00:00 -> 2020-04-22T01:25:00+00:00
@@ -102,8 +102,8 @@ def other_fn(execution_date):
 _last_post_diff = 15
 
 
-def foo(execution_date: Pendulum,
-        last_post_date: Pendulum):
+def foo(execution_date: DateTime,
+        last_post_date: DateTime):
     empty_slots = 0
     should_post = empty_slots == 0
     diff_passed = execution_date.subtract(minutes=_last_post_diff) >= last_post_date
@@ -112,7 +112,7 @@ def foo(execution_date: Pendulum,
     return should_post and diff_passed
 
 
-now = Pendulum(year=2020, month=4, day=22, minute=25)
+now = DateTime(year=2020, month=4, day=22, minute=25)
 
 for i in range(5):
     p = now.add(minutes=i * 5)

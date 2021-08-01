@@ -1,4 +1,4 @@
-from pendulum import Pendulum
+from pendulum import DateTime
 
 
 # faster flat_map functions then using lambda
@@ -22,7 +22,7 @@ alert_tasks: dict = {'dags': {'emr_email_events': {'tasks': [{'copy': {}}]},
 default_tasks = alert_tasks['tasks']
 
 
-def report_to_pagerduty_with_conf(dag_id: str, task_id: str, execution_date: Pendulum) -> bool:
+def report_to_pagerduty_with_conf(dag_id: str, task_id: str, execution_date: DateTime) -> bool:
     dags: dict = alert_tasks['dags']
     dag: dict = dags.get(dag_id, {dag_id: {}})
     dag_tasks = dag['tasks'] if dag.get('tasks') else default_tasks
@@ -68,7 +68,7 @@ def report_to_pagerduty_with_conf(dag_id: str, task_id: str, execution_date: Pen
 
 
 if __name__ == "__main__":
-    execution_date = Pendulum.now()
+    execution_date = DateTime.now()
     assert (report_to_pagerduty_with_conf(dag_id='user_registration_trackings', task_id='copy_qa',
                                           execution_date=execution_date))
     assert (report_to_pagerduty_with_conf(dag_id='subscription_events', task_id='ccc',

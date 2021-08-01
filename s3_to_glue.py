@@ -5,7 +5,7 @@ from typing import Optional
 
 import boto3
 import smart_open
-from airflow import AirflowException
+from airflow.exceptions import AirflowException
 
 from mysql_schema_dump import TableDef
 

@@ -3,9 +3,9 @@ import os
 from urllib import parse
 
 import requests
-from airflow import AirflowException
+from airflow.exceptions import AirflowException
 from dotenv import load_dotenv
-from pendulum import Pendulum
+from pendulum import DateTime
 from smart_open import open
 
 load_dotenv()
@@ -18,7 +18,7 @@ class SendGridOperator:
                  bucket: str,
                  schema: str,
                  table: str,
-                 execution_date: Pendulum):
+                 execution_date: DateTime):
         self._schema = schema
         self._table = table
         self._bucket = bucket
@@ -74,6 +74,6 @@ class SendGridOperator:
 
 
 if __name__ == "__main__":
-    ed = Pendulum(2021, 2, 22, 20, 40, 0)
+    ed = DateTime(2021, 2, 22, 20, 40, 0)
     sendgrid = SendGridOperator('bucket', 'schema', 'table', ed)
     sendgrid.execute()

@@ -1,9 +1,10 @@
 import re
+from datetime import datetime
 from typing import List, Optional
 
-from pendulum import Pendulum, datetime
+from pendulum import DateTime
 
-tables = [f'tmp_table_{Pendulum.now().subtract(days=i).format("%Y%m%d_%H")}' for i in [0, 1, 2, 3]]
+tables = [f'tmp_table_{DateTime.now().subtract(days=i).format("%Y%m%d_%H")}' for i in [0, 1, 2, 3]]
 filtered_tables = tables[1:]
 
 
@@ -37,14 +38,14 @@ class FilterTables:
         return self.tables_to_remove
 
 
-def __match(today: Pendulum, table: str) -> (str, Pendulum):
+def __match(today: DateTime, table: str) -> (str, DateTime):
     match_name = re.search(r'^tmp_.*\d{4}\d{2}\d{2}', table)
     match_date = re.search(r'\d{4}\d{2}\d{2}', table)
     return table, datetime.strptime(match_date.group(), '%Y%m%d') if match_date and match_name else today
 
 
 def __filter_tmp_tables(table_list: List[str]) -> List[str]:
-    execution_date: Pendulum = Pendulum.now()
+    execution_date: DateTime = DateTime.now()
     upper_bounds = execution_date.subtract(days=1)
     to_delete = map(lambda x: __match(execution_date, x), table_list)
     return [x[0] for x in list(filter(lambda x: x[1] < upper_bounds, to_delete))]

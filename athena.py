@@ -2,7 +2,7 @@ import copy
 import time
 
 import boto3
-from pendulum import Pendulum
+from pendulum import DateTime
 
 
 def athena_query(_client, _params):
@@ -75,8 +75,8 @@ def whole():
     f = open('/home/rotem/query.sql', 'r')
     query = f.read()
     f.close()
-    start = Pendulum(2021, 1, 1, 0)
-    end = Pendulum(2021, 1, 6, 10)
+    start = DateTime(2021, 1, 1, 0)
+    end = DateTime(2021, 1, 6, 10)
     while start < end:
         print(start)
         hour_query = copy.deepcopy(query) % (start.format('%Y-%m-%d'), start.format("%H"))

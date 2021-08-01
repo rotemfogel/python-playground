@@ -1,35 +1,35 @@
 from datetime import datetime
 
-from pendulum import Pendulum
+from pendulum import DateTime
 
 
-def hourly_fn(execution_date: Pendulum) -> Pendulum:
+def hourly_fn(execution_date: DateTime) -> DateTime:
     """
     default function for sensors of daily DAGs that depend on hourly DAGs
     assuming the daily task runs at 05:25
     :param execution_date: the DAG execution date
-    :return: Pendulum
+    :return: DateTime
     """
 
-    execution_date_transformed: Pendulum = execution_date.add(days=1)
+    execution_date_transformed: DateTime = execution_date.add(days=1)
 
     return execution_date_transformed
 
 
-def hourly_one_earlier_fn(execution_date: Pendulum) -> Pendulum:
+def hourly_one_earlier_fn(execution_date: DateTime) -> DateTime:
     """
     default function for sensors of daily DAGs that depend on hourly DAGs
     assuming the daily task runs at 05:25
     :param execution_date: the DAG execution date
-    :return: Pendulum
+    :return: DateTime
     """
 
-    execution_date_transformed: Pendulum = execution_date.add(hours=23)
+    execution_date_transformed: DateTime = execution_date.add(hours=23)
 
     return execution_date_transformed
 
 
-def daily_fn(execution_date: Pendulum) -> Pendulum:
+def daily_fn(execution_date: DateTime) -> DateTime:
     """
     default function for sensors of DAGs with a frequency larger then daily
     that depend on daily DAGs
@@ -44,26 +44,26 @@ def daily_fn(execution_date: Pendulum) -> Pendulum:
       for [2020-04-20 16:25:00] should be [2020-04-19 05:25:00]
       for [2020-04-20 04:25:00] should be [2020-04-18 05:25:00]
     :param execution_date: the DAG execution date
-    :return: Pendulum
+    :return: DateTime
     """
     hour: int = execution_date.hour
-    closest_execution_date: Pendulum = execution_date.subtract(days=1).hour_(5).minute_(25).second_(0).microsecond_(0)
+    closest_execution_date: DateTime = execution_date.subtract(days=1).set(hour=5, minute=25, second=0, microsecond=0)
     if hour < 5:
         return closest_execution_date.subtract(days=1)
     return closest_execution_date
 
 
-def _find_closest_hour(execution_date: Pendulum, hours: list) -> datetime:
+def _find_closest_hour(execution_date: DateTime, hours: list) -> datetime:
     """
     method accept execution date,
     extracts the hour from execution date
     and finds the closest date to pass the sensor,
     assuming it is a recurring task based on list of hours.
     :param execution_date: the DAG execution date
-    :type: Pendulum
+    :type: DateTime
     :param hours: the list of hours to match
     :type: array of numbers
-    :return: Pendulum
+    :return: DateTime
     """
     hour = execution_date.hour
 
@@ -83,14 +83,14 @@ def _find_closest_hour(execution_date: Pendulum, hours: list) -> datetime:
     return execution_date.hour_(closest_hour)
 
 
-def mariadb_fn(execution_date: Pendulum) -> datetime:
+def mariadb_fn(execution_date: DateTime) -> datetime:
     """
     method accept execution date,
     and calls the _find_closest_hour with specific
     mariadb list of hours.
     :param execution_date: the DAG execution date
-    :type: Pendulum
-    :return: Pendulum
+    :type: DateTime
+    :return: DateTime
     example:
       2020-04-22T00:25:00+00:00 -> 2020-04-21T23:25:00+00:00
       2020-04-22T01:25:00+00:00 -> 2020-04-22T01:25:00+00:00
@@ -108,13 +108,13 @@ def mariadb_fn(execution_date: Pendulum) -> datetime:
     return _find_closest_hour(sensor_date, arr)
 
 
-def ignore_past(execution_date: Pendulum) -> Pendulum:
+def ignore_past(execution_date: DateTime) -> DateTime:
     """
     Decide what execution_date the sensor should look for
     If execution date is more then 30 days ago, return execution date of 30 days ago
     otherwise return execution date
     :param execution_date:
-    :return: Pendulum
+    :return: DateTime
     """
 
     execution_diff = execution_date.diff().in_days()

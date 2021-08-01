@@ -2,7 +2,7 @@ import copy
 from pprint import pprint
 
 import yaml
-from pendulum import Pendulum
+from pendulum import DateTime
 
 with open('page_events.yaml', 'r') as conf_file:
     events_process_conf = yaml.safe_load(conf_file)
@@ -21,7 +21,7 @@ def session_emr_config(global_emr_conf: dict) -> dict:
     steps[ix] = 's3://{{ var.value.data_bucket }}/{{ var.json.schema.db_layer }}/page_events'
     # change date-hour-inputs
     ix = steps.index("--date-hour-inputs") + 1
-    steps[ix] = Pendulum.now().subtract(hours=1).format('%Y-%m-%d-%H')
+    steps[ix] = DateTime.now().subtract(hours=1).format('%Y-%m-%d-%H')
     # steps[ix] = sessions_date_hour_inputs(
     #    context['dag_run'].start_date if context['dag_run'] else macros.datetime.now(),
     #    context['execution_date'].subtract(hours=1))
@@ -49,8 +49,8 @@ tasks = [{'name': 'page_events', 'task': page_events},
          {'name': 'enrichment', 'task': enrichment}]
 
 if __name__ == "__main__":
-    start = Pendulum(2021, 1, 17, 5)
-    end = Pendulum(2021, 1, 18, 4)
+    start = DateTime(2021, 1, 17, 5)
+    end = DateTime(2021, 1, 18, 4)
     hours_ahead = 24
     while start < end:
         next_hour = start.add(hours=hours_ahead)
