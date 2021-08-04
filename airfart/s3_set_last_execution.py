@@ -14,10 +14,8 @@ class S3SetLastExecutionOperator(LoggingMixin):
 
     :param bucket: The S3 bucket where to find the objects. (templated)
     :type bucket: str
-    :param database: the s3 database. (templated)
-    :type database: str
-    :param model: the table name. (templated)
-    :type model: str
+    :param prefix: the s3 database. (templated)
+    :type prefix: str
     :param key: the data to write (e.g. partition name). (templated)
     :type key: str
     :param value: the data to write (e.g. '2021-01-01/01'). (templated)
@@ -26,22 +24,19 @@ class S3SetLastExecutionOperator(LoggingMixin):
 
     def __init__(self,
                  bucket: str,
-                 database: str,
-                 model: str,
+                 prefix: str,
                  key: str,
                  value: str):
         super().__init__()
         self.bucket = bucket
-        self.database = database
-        self.model = model
+        self.prefix = prefix
         self.key = key
         self.value = value
 
     # noinspection PyBroadException
     def execute(self):
         try:
-            raw_data: str = S3GetLastExecutionOperator(bucket=self.bucket, database=self.database,
-                                                       model=self.model).execute()
+            raw_data: str = S3GetLastExecutionOperator(bucket=self.bucket, prefix=self.prefix).execute()
         except Exception:
             raw_data: Optional[str] = None
 
@@ -54,11 +49,11 @@ class S3SetLastExecutionOperator(LoggingMixin):
         json_data = json.dumps(data)
 
         try:
-            with smart_open.smart_open(f's3://{self.bucket}/{self.database}/{self.model}/last_execution',
+            with smart_open.smart_open(f's3://{self.bucket}/{self.prefix}/last_execution',
                                        'wb') as s3_file:
                 s3_file.write(json_data.encode('utf8'))
 
-            self.log.info(f"Updated {self.model} last_partition to {raw_data} in S3")
+            self.log.info(f"Updated {self.prefix} last_partition to {raw_data} in S3")
 
         except Exception:
             raise Exception("Error updating last_execution file")

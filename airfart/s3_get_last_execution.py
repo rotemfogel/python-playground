@@ -12,25 +12,22 @@ class S3GetLastExecutionOperator(LoggingMixin):
 
     :param bucket: The S3 bucket where to find the objects. (templated)
     :type bucket: str
-    :param database: the s3 database. (templated)
-    :type database: str
-    :param model: the table name. (templated)
-    :type model: str
+    :param prefix: the s3 database. (templated)
+    :type prefix: str
     :param key: the key to write (e.g. training). (templated)
     :type key: str
     """
 
-    def __init__(self, bucket: str, database: str, model: str, key: Optional[str] = None):
+    def __init__(self, bucket: str, prefix: str, key: Optional[str] = None):
         super().__init__()
         self.bucket = bucket
-        self.database = database
-        self.model = model
+        self.prefix = prefix
         self.key = key
 
     def execute(self):
         try:
             rows = []
-            with smart_open.smart_open(f's3://{self.bucket}/{self.database}/{self.model}/last_execution',
+            with smart_open.smart_open(f's3://{self.bucket}/{self.prefix}/last_execution',
                                        'r') as s3_file:
                 for line in s3_file:
                     rows.append(line)

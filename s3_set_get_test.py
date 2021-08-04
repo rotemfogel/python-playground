@@ -14,9 +14,10 @@ if __name__ == "__main__":
     bucket = os.getenv('POC_BUCKET')
     database = os.getenv('POC_DATABASE')
     model = os.getenv('POC_MODEL')
-    S3SetLastExecutionOperator(bucket=bucket, database=database, model=model, key=const_key,
+    prefix = f'{database}/{model}'
+    S3SetLastExecutionOperator(bucket=bucket, prefix=prefix, key=const_key,
                                value=const_value).execute()
-    value = S3GetLastExecutionOperator(bucket=bucket, database=database, model=model, key=const_key).execute()
+    value = S3GetLastExecutionOperator(bucket=bucket, prefix=prefix, key=const_key).execute()
     assert (value == const_value)
-    value = S3GetLastExecutionOperator(bucket=bucket, database=database, model=model).execute()
+    value = S3GetLastExecutionOperator(bucket=bucket, prefix=prefix).execute()
     assert (value == d)
