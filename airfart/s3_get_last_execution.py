@@ -1,8 +1,8 @@
-import json
-from typing import Optional, Dict
+from typing import Optional
 
-import smart_open
 from airflow.utils.log.logging_mixin import LoggingMixin
+
+from airfart.s3_utils import get_last_execution
 
 
 class S3GetLastExecutionOperator(LoggingMixin):
@@ -26,15 +26,6 @@ class S3GetLastExecutionOperator(LoggingMixin):
 
     def execute(self):
         try:
-            rows = []
-            with smart_open.smart_open(f's3://{self.bucket}/{self.prefix}/last_execution',
-                                       'r') as s3_file:
-                for line in s3_file:
-                    rows.append(line)
-            contents = ''.join(rows)
-            if self.key:
-                d: Dict[str, str] = json.loads(contents)
-                return d[self.key]
-            return contents
+            return get_last_execution(self.bucket, self.prefix, self.key)
         except Exception as e:
             raise Exception(f"Error reading last_execution file: {str(e)}")

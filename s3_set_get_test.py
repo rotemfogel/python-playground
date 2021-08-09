@@ -3,8 +3,7 @@ import os
 
 from dotenv import load_dotenv
 
-from airfart.s3_get_last_execution import S3GetLastExecutionOperator
-from airfart.s3_set_last_execution import S3SetLastExecutionOperator
+from airfart.s3_utils import set_last_execution, get_last_execution
 
 if __name__ == "__main__":
     load_dotenv()
@@ -15,9 +14,9 @@ if __name__ == "__main__":
     database = os.getenv('POC_DATABASE')
     model = os.getenv('POC_MODEL')
     prefix = f'{database}/{model}'
-    S3SetLastExecutionOperator(bucket=bucket, prefix=prefix, key=const_key,
-                               value=const_value).execute()
-    value = S3GetLastExecutionOperator(bucket=bucket, prefix=prefix, key=const_key).execute()
+    set_last_execution(bucket=bucket, prefix=prefix, key=const_key,
+                       value=const_value)
+    value = get_last_execution(bucket=bucket, prefix=prefix, key=const_key)
     assert (value == const_value)
-    value = S3GetLastExecutionOperator(bucket=bucket, prefix=prefix).execute()
+    value = get_last_execution(bucket=bucket, prefix=prefix)
     assert (value == d)
