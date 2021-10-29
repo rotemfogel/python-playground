@@ -1,10 +1,10 @@
 import requests
 import tenacity
 
-from airfart.base_hook import BaseHook
+from airfart.base_http_hook import BaseHttpHook
 
 
-class HttpHook(BaseHook):
+class HttpHook(BaseHttpHook):
     """
     Interact with HTTP servers.
 

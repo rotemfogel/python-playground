@@ -2,12 +2,12 @@ import urllib
 
 import urllib3
 
-from airfart.base_hook import BaseHook
+from airfart.base_http_hook import BaseHttpHook
 from airfart.connection import Connection
 from airfart.http_hook import HttpHook
 
 
-class AppendHttpHook(BaseHook):
+class AppendHttpHook(BaseHttpHook):
     def __init__(self,
                  method: str = 'GET',
                  http_conn_id: str = 'http_default'

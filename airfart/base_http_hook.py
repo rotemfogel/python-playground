@@ -4,7 +4,7 @@ import os
 from airfart.connection import Connection
 
 
-class BaseHook:
+class BaseHttpHook:
     def __init__(self) -> None:
         super().__init__()
         self._active_conf: str = os.getenv('ACTIVE_CAMPAIGN_CONF')
