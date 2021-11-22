@@ -19,12 +19,7 @@ def fill_none(xs: List[Optional[int]]) -> List[int]:
 
         it = iter(o)
         head: Optional[int] = next(it)
-        if not head:
-            head = last
-        else:
-            last = head
-        n.append(head)
-        return fill(list(it), n, last)
+        return fill(list(it), n + [last if not head else head], last if not head else head)
 
     if not xs[0]:
         raise AssertionError('first value must be present !')
