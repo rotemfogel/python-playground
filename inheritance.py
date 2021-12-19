@@ -1,5 +1,5 @@
 class Parent:
-    def __init__(self, report: bool = False):
+    def __init__(self, report: bool = False, *args, **kwargs):
         self.report = report
 
     def execute(self):
@@ -13,5 +13,5 @@ class Child(Parent):
 
 if __name__ == "__main__":
     Child().execute()
-    Child(report=True).execute()
+    Child(report=True, max_result=2).execute()
     Child(report=False).execute()

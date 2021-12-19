@@ -1,20 +1,38 @@
+#[[source]]
+#url = "https://pip.astronomer.io/simple"
+#verify_ssl = true
+#name = "astronomer"
+
 [[source]]
 url = "https://pypi.org/simple"
 verify_ssl = true
 name = "pypi"
 
 [packages]
-# Airflow packages
-apache-airflow = "==2.1.2"
+# from Airflow constraint file [https://raw.githubusercontent.com/apache/airflow/constraints-2.2.2/constraints-3.8.txt]
+MarkupSafe = "==1.1.1"
+Jinja2 = "==2.11.3"
+apache-airflow = "==2.2.2"
 apache-airflow-providers-amazon = "*"
 apache-airflow-providers-http = "*"
+apache-airflow-providers-imap = "*"
+apache-airflow-providers-mongo = "*"
+apache-airflow-providers-mysql = "*"
+apache-airflow-providers-pagerduty = "*"
 apache-airflow-providers-postgres = "*"
+apache-airflow-providers-sendgrid = "*"
 apache-airflow-providers-slack = "*"
 apache-airflow-providers-sqlite = "*"
+apache-airflow-providers-ssh = "*"
 apache-airflow-providers-vertica = "*"
-apache-airflow-providers-pagerduty = "*"
+google-auth = "*"
+google-auth-httplib2 = "*"
+google-auth-oauthlib = "*"
+boto3 = "*"
+botocore = "*"
 smart-open = "*"
 python-dotenv = "*"
+google-ads = "*"
 
 [dev-packages]
 flake8 = "*"
@@ -23,4 +41,4 @@ nose = "*"
 coverage = "*"
 
 [requires]
-python_version = "3.7"
+python_version = "3.8"
