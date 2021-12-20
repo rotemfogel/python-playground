@@ -2,6 +2,39 @@
 from pendulum import DateTime
 
 
+def to_est(execution_date: DateTime, **args) -> DateTime:
+    """
+    converts date to EST timezone offset
+    returns DateTime
+
+    :param execution_date:
+    :type: DateTime
+    """
+    est = execution_date.in_timezone("America/New_York")
+    if args:
+        right_params = all(arg in ['days', 'hours'] for arg in args.keys())
+        if right_params:
+            est = est.subtract(**args)
+    return est
+
+
+def ds_ny(execution_date: DateTime,
+          template: str = 'YYYY-MM-DD',
+          **args) -> str:
+    """
+    converts date to string, with timezone offset
+    like the built-in macro `ds` only in EDT timezone
+
+    returns date string
+
+    :param execution_date:
+    :type: DateTime
+    :param template:
+    :type: str
+    """
+    return to_est(execution_date, args).format(template)
+
+
 def hourly_fn(execution_date):
     """
     default function for sensors of daily DAGs that depend on hourly DAGs
@@ -33,7 +66,7 @@ def daily_fn(execution_date):
     :return: DateTime
     """
     hour = execution_date.hour
-    closest_execution_date = execution_date.subtract(days=1).hour_(5).minute_(25).second_(0).microsecond_(0)
+    closest_execution_date = execution_date.subtract(days=1).set(hour=5, minute=25, second=0, microsecond=0)
     if hour < 5:
         return closest_execution_date.subtract(days=1)
     return closest_execution_date
@@ -66,10 +99,10 @@ def _find_closest_hour(execution_date, hours):
 
     if closest_hour > hour:
         return execution_date.subtract(hours=closest_hour)
-    return execution_date.hour_(closest_hour)
+    return execution_date.set(hour=closest_hour)
 
 
-def mariadb_fn(execution_date):
+def mariadb_fn(execution_date: DateTime):
     """
     method accept execution date,
     and calls the _find_closest_hour with specific
@@ -89,7 +122,7 @@ def mariadb_fn(execution_date):
     """
     # array of hours depicting mariadb_dump runs
     arr = [1, 4, 5, 6, 9, 13, 17, 21]
-    sensor_date = execution_date.minute_(25).second_(0).microsecond_(0)
+    sensor_date = execution_date.set(minute=25, second=0, microsecond=0)
 
     return _find_closest_hour(sensor_date, arr)
 
@@ -132,3 +165,10 @@ for i in range(23):
     p = now.add(hours=i)
     r = other_fn(p)
     print("{} -> {}".format(p, r))
+
+print(100 * '-')
+now = DateTime(year=2021, month=3, day=14, hour=2, minute=25)
+print(to_est(now, hours=1))
+print(to_est(now, hours=0))
+print(to_est(now, hours=-1))
+print(to_est(now, test=1))
