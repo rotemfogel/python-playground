@@ -1,12 +1,16 @@
+import json
+import logging
 from enum import IntEnum
-from typing import Optional
 
+import pandas as pd
 from airflow.exceptions import AirflowException
 from google.ads.googleads.client import GoogleAdsClient
+from google.protobuf import json_format
 from pandas import DataFrame
+from typing import Optional
 
 from airfart.base_hook import BaseHook
-import logging
+
 
 class OutputFormat(object):
     JSON: str = 'json'
@@ -20,13 +24,6 @@ class GoogleAdsApiType(IntEnum):
 
 
 class GoogleAdsApiHook(BaseHook):
-    __GOOGLE_ADS_API_TOKEN = 'google_ads_api_tokens'
-    __NEXT_TOKEN = 'next_token'
-    __SCOPES = ["https://www.googleapis.com/auth/adwords",
-                "https://adwords.google.com/api/adwords",
-                "https://adwords.google.com/api/adwords/",
-                "https://adwords.google.com/api/adwords/cm"]
-    __CLIENT_SECRET_PATH = "/home/rotem/google-ads.json"
 
     def __init__(self,
                  method: GoogleAdsApiType):
@@ -49,23 +46,24 @@ class GoogleAdsApiHook(BaseHook):
         request.query = sql
         results = []
         # emulate do-while
-        while True:
-            response = self.get_conn().search(request)
+        response_proto = self.get_conn().search(request)
+        for page in response_proto:
+            json_str = json_format.MessageToJson(page)
+            response = json.loads(json_str)
             results.append(response)
-            if response.get(self.__NEXT_TOKEN):
-                request.update({self.__NEXT_TOKEN: response[self.__NEXT_TOKEN]})
-            else:
-                break
         return results
 
     def _search_stream(self, sql) -> Optional[DataFrame]:
         """
         stream api
         """
-        response = self.get_conn().search_stream(customer_id=self.customer_id, query=sql)
+        stream = self.get_conn().search_stream(customer_id=self.customer_id, query=sql)
         results = []
-        for element in response:
-            results.append(element)
+        for batch in stream:
+            for row in batch.results:
+                json_str = json_format.MessageToJson(row)
+                obj = json.loads(json_str)
+                results.append(obj)
         return results
 
     def get_conn(self):
@@ -77,9 +75,15 @@ class GoogleAdsApiHook(BaseHook):
             self.service = self.client.get_service("GoogleAdsService", version="v9")
         return self.service
 
-    def get_records(self, sql):
+    def _get_records(self, sql):
+        results = None
         if self.method == GoogleAdsApiType.SearchStream:
-            return self._search_stream(sql)
+            results = self._search_stream(sql)
         if self.method == GoogleAdsApiType.Search:
-            return self._search(sql)
+            results = self._search(sql)
+        if results:
+            return pd.DataFrame(results)
         raise AirflowException('Unknown GoogleAdsApiType: {}'.format(self.method))
+
+    def get_records(self, sql):
+        return self._get_records(sql)
