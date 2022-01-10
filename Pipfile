@@ -9,10 +9,8 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-# from Airflow constraint file [https://raw.githubusercontent.com/apache/airflow/constraints-2.2.2/constraints-3.8.txt]
-MarkupSafe = "==1.1.1"
-Jinja2 = "==2.11.3"
-apache-airflow = "==2.2.2"
+# from Airflow constraint file [https://raw.githubusercontent.com/apache/airflow/constraints-2.2.3/constraints-3.8.txt]
+apache-airflow = "==2.2.3"
 apache-airflow-providers-amazon = "*"
 apache-airflow-providers-http = "*"
 apache-airflow-providers-imap = "*"
@@ -33,6 +31,7 @@ botocore = "*"
 smart-open = "*"
 python-dotenv = "*"
 google-ads = "*"
+pyarrow = "*"
 
 [dev-packages]
 flake8 = "*"
