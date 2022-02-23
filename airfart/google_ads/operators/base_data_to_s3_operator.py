@@ -5,7 +5,7 @@ from datetime import timedelta
 import smart_open
 from airflow.utils.log.logging_mixin import LoggingMixin
 
-from airfart.google_ads.hooks.google_ads_api_hook import OutputFormat
+from airfart.google_ads.model.output_format import OutputFormat
 
 
 class BaseDataToS3Operator(LoggingMixin, ABC):
@@ -13,7 +13,7 @@ class BaseDataToS3Operator(LoggingMixin, ABC):
     The following Operator submits a query to a Postgres Client,
      the results of the query are copied to an S3 location
 
-    Currently only supporting Gzip output format
+    Currently, only supporting Gzip output format
 
     :param sql: query to execute. (Templated)
     :type sql: str
@@ -55,6 +55,7 @@ class BaseDataToS3Operator(LoggingMixin, ABC):
         assert self.output_format in self._allowed_formats, f'output_format should be either {OutputFormat.JSON}, {OutputFormat.PARQUET} or {OutputFormat.CSV}! '
         self.post_db_path = post_db_path
         self.include_csv_headers = include_csv_headers
+        self.execution_timeout = execution_timeout
 
     def get_hook(self):
         raise NotImplementedError
@@ -77,10 +78,10 @@ class BaseDataToS3Operator(LoggingMixin, ABC):
         else:  # OutputFormat.PARQUET
             suffix = '.parquet'
         address = '/'.join(path_components) + suffix
-        self.log.info(f"\nGenerated destination: {address}\n")
+        self.log.debug(f"\nGenerated destination: {address}\n")
 
         # Query logging
-        self.log.info('\nExecuting the following query: %s\n', self.sql)
+        self.log.debug('\nExecuting the following query: %s\n', self.sql)
 
         df = self.get_records()
 

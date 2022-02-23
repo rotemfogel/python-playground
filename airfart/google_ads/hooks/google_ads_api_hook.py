@@ -1,40 +1,47 @@
 import json
 import logging
-from enum import IntEnum
+import os
+from typing import Optional
 
 import pandas as pd
 from airflow.exceptions import AirflowException
+from dotenv import load_dotenv
 from google.ads.googleads.client import GoogleAdsClient
 from google.protobuf import json_format
 from pandas import DataFrame
-from typing import Optional
 
 from airfart.base_hook import BaseHook
+from airfart.google_ads.model.google_ads_api_type import GoogleAdsApiType
 
-
-class OutputFormat(object):
-    JSON: str = 'json'
-    PARQUET: str = 'parquet'
-    CSV: str = 'csv'
-
-
-class GoogleAdsApiType(IntEnum):
-    SearchStream = 1
-    Search = 2
+load_dotenv()
 
 
 class GoogleAdsApiHook(BaseHook):
+    __ALLOWED_METHODS = [GoogleAdsApiType.Search, GoogleAdsApiType.SearchStream]
 
     def __init__(self,
-                 method: GoogleAdsApiType):
+                 method: GoogleAdsApiType,
+                 customer_id: str,
+                 logging_level: int = logging.INFO):
         super().__init__(conn_id=None)
+        if not method in self.__ALLOWED_METHODS:
+            raise AirflowException('Unknown GoogleAdsApiType: {}'.format(self.method))
         self.method = method
         self.client = None
-        self.customer_id = None
+        self.customer_id = customer_id
         self.client = None
         self.service = None
         logging.basicConfig(level=logging.INFO, format='[%(asctime)s - %(levelname)s] %(message).5000s')
-        logging.getLogger('google.ads.googleads.client').setLevel(logging.DEBUG)
+        logging.getLogger('google.ads.googleads.client').setLevel(logging_level)
+
+    def get_conn(self):
+        if self.client is None:
+            # credentials = Variable.get('google_ads_credentials', deserialize_json=True)
+            credentials = json.loads(os.getenv('google_ads_credentials'))
+            self.client = GoogleAdsClient.load_from_dict(credentials, version="v9")
+            # self.client = GoogleAdsClient.load_from_storage(version="v9")
+            self.service = self.client.get_service("GoogleAdsService", version="v9")
+        return self.service
 
     def _search(self, sql) -> Optional[DataFrame]:
         """
@@ -66,15 +73,6 @@ class GoogleAdsApiHook(BaseHook):
                 results.append(obj)
         return results
 
-    def get_conn(self):
-        if self.client is None:
-            # credentials = Variable.get('google_ads_credentials', deserialize_json=True)
-            # self.client = GoogleAdsClient.load_from_dict(credentials, version="v9")
-            self.client = GoogleAdsClient.load_from_storage(version="v9")
-            self.customer_id = self.client.login_customer_id
-            self.service = self.client.get_service("GoogleAdsService", version="v9")
-        return self.service
-
     def _get_records(self, sql):
         results = None
         if self.method == GoogleAdsApiType.SearchStream:
@@ -83,7 +81,6 @@ class GoogleAdsApiHook(BaseHook):
             results = self._search(sql)
         if results:
             return pd.DataFrame(results)
-        raise AirflowException('Unknown GoogleAdsApiType: {}'.format(self.method))
 
     def get_records(self, sql):
         return self._get_records(sql)

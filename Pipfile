@@ -10,7 +10,7 @@ name = "pypi"
 
 [packages]
 # from Airflow constraint file [https://raw.githubusercontent.com/apache/airflow/constraints-2.2.3/constraints-3.8.txt]
-apache-airflow = "==2.2.3"
+apache-airflow = "==2.2.4"
 apache-airflow-providers-amazon = "*"
 apache-airflow-providers-http = "*"
 apache-airflow-providers-imap = "*"
@@ -26,12 +26,12 @@ apache-airflow-providers-vertica = "*"
 google-auth = "*"
 google-auth-httplib2 = "*"
 google-auth-oauthlib = "*"
-boto3 = "*"
-botocore = "*"
 smart-open = "*"
 python-dotenv = "*"
 google-ads = "*"
 pyarrow = "*"
+fsspec = "*"
+s3fs = "*"
 
 [dev-packages]
 flake8 = "*"

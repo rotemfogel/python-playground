@@ -18,11 +18,9 @@ application flow.
 It is intended to be run from the command line and requires user input.
 """
 
-
 import argparse
 
 from google_auth_oauthlib.flow import InstalledAppFlow
-
 
 SCOPE = "https://www.googleapis.com/auth/adwords"
 
@@ -41,7 +39,7 @@ def main(client_secrets_path, scopes):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Generates OAuth 2.0 credentials with the specified "
-        "client secrets file."
+                    "client secrets file."
     )
     # The following argument(s) should be provided to run the example.
     parser.add_argument(

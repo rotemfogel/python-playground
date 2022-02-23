@@ -1,4 +1,6 @@
-# Returns element closest to target in arr[]
+from datetime import datetime
+
+import pendulum
 from pendulum import DateTime
 
 
@@ -132,6 +134,12 @@ def other_fn(execution_date):
     return _find_closest_hour(execution_date, arr)
 
 
+def datetime_to_pendulum(dt: datetime) -> DateTime:
+    if not dt:
+        dt = datetime.now()
+    return pendulum.instance(dt)
+
+
 _last_post_diff = 15
 
 
@@ -172,3 +180,11 @@ print(to_est(now, hours=1))
 print(to_est(now, hours=0))
 print(to_est(now, hours=-1))
 print(to_est(now, test=1))
+
+now = datetime.now()
+pnow = pendulum.instance(now)
+
+s = pnow.to_iso8601_string()
+parsed = pendulum.parse(s)
+print(pnow)
+print(parsed)
