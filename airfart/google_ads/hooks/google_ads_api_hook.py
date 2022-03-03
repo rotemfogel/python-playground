@@ -8,7 +8,6 @@ from airflow.exceptions import AirflowException
 from dotenv import load_dotenv
 from google.ads.googleads.client import GoogleAdsClient
 from google.protobuf import json_format
-from pandas import DataFrame
 
 from airfart.base_hook import BaseHook
 from airfart.google_ads.model.google_ads_api_type import GoogleAdsApiType
@@ -17,20 +16,21 @@ load_dotenv()
 
 
 class GoogleAdsApiHook(BaseHook):
-    __ALLOWED_METHODS = [GoogleAdsApiType.Search, GoogleAdsApiType.SearchStream]
+    __ALLOWED_API_TYPES = [GoogleAdsApiType.Search, GoogleAdsApiType.SearchStream]
+    __GOOGLE_ADS_API_VERSION = "v9"
 
     def __init__(self,
-                 method: GoogleAdsApiType,
+                 api_type: GoogleAdsApiType,
                  customer_id: str,
-                 logging_level: int = logging.INFO):
-        super().__init__(conn_id=None)
-        if not method in self.__ALLOWED_METHODS:
-            raise AirflowException('Unknown GoogleAdsApiType: {}'.format(self.method))
-        self.method = method
-        self.client = None
+                 logging_level: int = logging.INFO) -> None:
+        super().__init__()
+        if api_type not in self.__ALLOWED_API_TYPES:
+            raise AirflowException(f'Unknown GoogleAdsApiType: {api_type}')
+        self.api_type = api_type
         self.customer_id = customer_id
         self.client = None
         self.service = None
+        # noinspection SpellCheckingInspection
         logging.basicConfig(level=logging.INFO, format='[%(asctime)s - %(levelname)s] %(message).5000s')
         logging.getLogger('google.ads.googleads.client').setLevel(logging_level)
 
@@ -43,13 +43,13 @@ class GoogleAdsApiHook(BaseHook):
             self.service = self.client.get_service("GoogleAdsService", version="v9")
         return self.service
 
-    def _search(self, sql) -> Optional[DataFrame]:
+    def _search(self, sql) -> Optional[list]:
         """
         search api
         """
         self.get_conn()
         request = self.client.get_type('SearchGoogleAdsRequest')
-        request.customer_id = self.client.login_customer_id
+        request.customer_id = self.customer_id
         request.query = sql
         results = []
         # emulate do-while
@@ -60,7 +60,7 @@ class GoogleAdsApiHook(BaseHook):
             results.append(response)
         return results
 
-    def _search_stream(self, sql) -> Optional[DataFrame]:
+    def _search_stream(self, sql) -> Optional[list]:
         """
         stream api
         """
@@ -73,14 +73,12 @@ class GoogleAdsApiHook(BaseHook):
                 results.append(obj)
         return results
 
-    def _get_records(self, sql):
-        results = None
-        if self.method == GoogleAdsApiType.SearchStream:
-            results = self._search_stream(sql)
-        if self.method == GoogleAdsApiType.Search:
-            results = self._search(sql)
-        if results:
-            return pd.DataFrame(results)
-
     def get_records(self, sql):
-        return self._get_records(sql)
+        if self.api_type == GoogleAdsApiType.SearchStream:
+            return self._search_stream(sql)
+        if self.api_type == GoogleAdsApiType.Search:
+            return self._search(sql)
+        raise AirflowException('Invalid api_type provided')
+
+    def get_pandas_df(self, sql):
+        return pd.DataFrame(self.get_records(sql))

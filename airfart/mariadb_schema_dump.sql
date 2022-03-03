@@ -6,12 +6,14 @@ SELECT TABLE_NAME,
                                             'column_key', COLUMN_KEY)), ']') COLUMNS
   FROM (SELECT c.TABLE_NAME,
                COLUMN_NAME,
-               DATA_TYPE,
+               CASE WHEN DATA_TYPE = 'datetime' and DATETIME_PRECISION > 0 THEN 'precision_datetime'
+                    ELSE DATA_TYPE END AS DATA_TYPE,
                CASE
                  WHEN DATA_TYPE = 'varchar'
                  THEN CHARACTER_MAXIMUM_LENGTH
                  WHEN DATA_TYPE IN ('text', 'longtext', 'mediumtext','text') THEN '4000'
-                 WHEN DATA_TYPE = 'decimal' THEN CONCAT('(', NUMERIC_PRECISION,',',  NUMERIC_SCALE, ')')
+                 WHEN DATA_TYPE = 'decimal' THEN CONCAT('(', NUMERIC_PRECISION,',',  COALESCE(NUMERIC_SCALE,0), ')')
+                 WHEN DATA_TYPE = 'char' THEN CHARACTER_MAXIMUM_LENGTH
                  ELSE ''
                END DATA_LENGTH,
                ORDINAL_POSITION,

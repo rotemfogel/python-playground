@@ -9,7 +9,7 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-# from Airflow constraint file [https://raw.githubusercontent.com/apache/airflow/constraints-2.2.3/constraints-3.8.txt]
+# from Airflow constraint file [https://raw.githubusercontent.com/apache/airflow/constraints-2.2.4/constraints-3.8.txt]
 apache-airflow = "==2.2.4"
 apache-airflow-providers-amazon = "*"
 apache-airflow-providers-http = "*"
@@ -23,15 +23,17 @@ apache-airflow-providers-slack = "*"
 apache-airflow-providers-sqlite = "*"
 apache-airflow-providers-ssh = "*"
 apache-airflow-providers-vertica = "*"
+authlib = "*"
+fsspec = "*"
+google-ads = "*"
 google-auth = "*"
 google-auth-httplib2 = "*"
 google-auth-oauthlib = "*"
-smart-open = "*"
-python-dotenv = "*"
-google-ads = "*"
 pyarrow = "*"
-fsspec = "*"
+pydantic = "*"
+python-dotenv = "*"
 s3fs = "*"
+smart-open = "*"
 
 [dev-packages]
 flake8 = "*"

@@ -1,11 +1,12 @@
 import json
 from abc import ABC
 from datetime import timedelta
+from typing import Optional
 
 import smart_open
 from airflow.utils.log.logging_mixin import LoggingMixin
 
-from airfart.google_ads.model.output_format import OutputFormat
+from airfart.model.output_format import OutputFormat
 
 
 class BaseDataToS3Operator(LoggingMixin, ABC):
@@ -14,7 +15,6 @@ class BaseDataToS3Operator(LoggingMixin, ABC):
      the results of the query are copied to an S3 location
 
     Currently, only supporting Gzip output format
-
     :param sql: query to execute. (Templated)
     :type sql: str
     :param bucket: The S3 bucket where to find the objects. (Templated)
@@ -29,36 +29,48 @@ class BaseDataToS3Operator(LoggingMixin, ABC):
         this task instance, if it goes beyond it will raise and fail.
         Default is set to 5 minutes. (based on max of 6s, of 12 runs)
     :type execution_timeout: datetime.timedelta
-    :param postgres_conn_id: Postgres connection to use
-    :type postgres_conn_id: str
 
     """
-    _allowed_formats = [OutputFormat.JSON, OutputFormat.PARQUET, OutputFormat.CSV]
+    __ALLOWED_FORMATS = [OutputFormat.JSON, OutputFormat.PARQUET, OutputFormat.CSV]
+    log = LoggingMixin.log
 
     def __init__(self,
+                 *,
                  sql: str,
                  bucket: str,
                  database: str,
                  file_name: str,
+                 db_conn_id: Optional[str] = None,
+                 post_db_path: Optional[str] = None,
                  output_format: str = OutputFormat.JSON,
                  include_csv_headers: bool = True,
-                 post_db_path: str = None,
+                 records_transform_fn: callable = None,
                  execution_timeout: timedelta = timedelta(minutes=5),
-                 *args,
                  **kwargs):
-        super(BaseDataToS3Operator, self).__init__()
+        super().__init__()
+        assert output_format in self.__ALLOWED_FORMATS, \
+            f'output_format should be either {OutputFormat.JSON}, {OutputFormat.PARQUET} or {OutputFormat.CSV}! '
+
         self.sql = sql
         self.bucket = bucket
         self.database = database
         self.file_name = file_name
-        self.output_format = output_format
-        assert self.output_format in self._allowed_formats, f'output_format should be either {OutputFormat.JSON}, {OutputFormat.PARQUET} or {OutputFormat.CSV}! '
+        self.db_conn_id = db_conn_id
         self.post_db_path = post_db_path
+        self.output_format = output_format
         self.include_csv_headers = include_csv_headers
+        self.records_transform_fn = records_transform_fn
         self.execution_timeout = execution_timeout
 
     def get_hook(self):
         raise NotImplementedError
+
+    def get_pandas_df(self):
+        """
+        get records from the hook
+        :return: list of records
+        """
+        return self.get_hook().get_pandas_df(self.sql)
 
     def get_records(self):
         """
@@ -77,31 +89,34 @@ class BaseDataToS3Operator(LoggingMixin, ABC):
             suffix = '.csv'
         else:  # OutputFormat.PARQUET
             suffix = '.parquet'
-        address = '/'.join(path_components) + suffix
-        self.log.debug(f"\nGenerated destination: {address}\n")
+        uri = '/'.join(path_components) + suffix
+        self.log.debug(f"\nGenerated destination: {uri}\n")
 
         # Query logging
         self.log.debug('\nExecuting the following query: %s\n', self.sql)
 
-        df = self.get_records()
+        df = self.get_pandas_df()
 
         if self.output_format == OutputFormat.PARQUET:
-            df.to_parquet(address, engine='pyarrow', allow_truncated_timestamps=True)
+            if self.records_transform_fn:
+                df = self.records_transform_fn(df)
+            df.to_parquet(uri, engine='pyarrow', allow_truncated_timestamps=True)
         else:
             if self.output_format == OutputFormat.JSON:
                 columns = df.select_dtypes(include=['datetime64']).columns
                 for column in columns:
                     df[column] = df[column].astype(str)
-                values = list(map(lambda x: json.dumps(x), df.to_dict(orient="records")))
+                records = df.to_dict(orient="records")
             else:  # self.CSV
-                values = df.to_csv(index=False, header=self.include_csv_headers).split("\n")
+                records = df.to_csv(index=False, header=self.include_csv_headers).split("\n")
 
             # Copy to S3
-            self.log.info(f'about to write to file {address}')
-            with smart_open.smart_open(address, 'wb') as s3_file:
-                for record in values:
+            self.log.info(f'about to write to file {uri}')
+            with smart_open.smart_open(uri, 'wb') as s3_file:
+                for record in records:
                     if not record:
                         continue
-                    s3_file.write(f'{record}\n'.encode('utf8'))
+                    record_to_write = self.records_transform_fn(record) if self.records_transform_fn else record
+                    s3_file.write((json.dumps(record_to_write, default=lambda o: o.__dict__) + '\n').encode('utf8'))
 
         self.log.info('All done')

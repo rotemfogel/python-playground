@@ -1,11 +1,6 @@
 import json
 from abc import ABC
-from contextlib import closing
-from typing import List, Optional
-
-import MySQLdb
-import boto3
-from airflow import AirflowException
+from typing import List
 
 
 class DatabaseType(object):
@@ -33,28 +28,29 @@ class DatabaseType(object):
 class DataTypeConverter(ABC):
     _mapping = {
         # numerics
-        'bigint': {DatabaseType.GLUE: 'bigint', DatabaseType.VERTICA: 'bigint'},
-        'decimal': {DatabaseType.GLUE: 'decimal', DatabaseType.VERTICA: 'decimal'},
-        'double': {DatabaseType.GLUE: 'double', DatabaseType.VERTICA: 'double precision'},
-        'float': {DatabaseType.GLUE: 'float', DatabaseType.VERTICA: 'float'},
-        'int': {DatabaseType.GLUE: 'int', DatabaseType.VERTICA: 'int'},
-        'mediumint': {DatabaseType.GLUE: 'int', DatabaseType.VERTICA: 'int'},
-        'smallint': {DatabaseType.GLUE: 'smallint', DatabaseType.VERTICA: 'smallint'},
-        'tinyint': {DatabaseType.GLUE: 'tinyint', DatabaseType.VERTICA: 'tinyint'},
+        'bigint': {DatabaseType.GLUE: 'bigint', DatabaseType.VERTICA: 'BIGINT'},
+        'decimal': {DatabaseType.GLUE: 'decimal', DatabaseType.VERTICA: 'DECIMAL'},
+        'double': {DatabaseType.GLUE: 'double', DatabaseType.VERTICA: 'DOUBLE PRECISION'},
+        'float': {DatabaseType.GLUE: 'float', DatabaseType.VERTICA: 'FLOAT'},
+        'int': {DatabaseType.GLUE: 'int', DatabaseType.VERTICA: 'INT'},
+        'mediumint': {DatabaseType.GLUE: 'int', DatabaseType.VERTICA: 'INT'},
+        'smallint': {DatabaseType.GLUE: 'smallint', DatabaseType.VERTICA: 'SMALLINT'},
+        'tinyint': {DatabaseType.GLUE: 'tinyint', DatabaseType.VERTICA: 'TINYINT'},
         # dates
-        'date': {DatabaseType.GLUE: 'date', DatabaseType.VERTICA: 'date'},
-        'timestamp': {DatabaseType.GLUE: 'timestamp', DatabaseType.VERTICA: 'timestamp'},
-        'datetime': {DatabaseType.GLUE: 'timestamp', DatabaseType.VERTICA: 'timestamp'},
+        'date': {DatabaseType.GLUE: 'date', DatabaseType.VERTICA: 'DATE'},
+        'timestamp': {DatabaseType.GLUE: 'timestamp', DatabaseType.VERTICA: 'TIMESTAMP'},
+        'datetime': {DatabaseType.GLUE: 'timestamp', DatabaseType.VERTICA: 'TIMESTAMP'},
+        'precision_datetime': {DatabaseType.GLUE: 'precision_timestamp', DatabaseType.VERTICA: 'TIMESTAMP'},
         # characters
-        'char': {DatabaseType.GLUE: 'char', DatabaseType.VERTICA: 'char'},
-        'varchar': {DatabaseType.GLUE: 'string', DatabaseType.VERTICA: 'varchar'},
-        'text': {DatabaseType.GLUE: 'string', DatabaseType.VERTICA: 'varchar'},
-        'tinytext': {DatabaseType.GLUE: 'string', DatabaseType.VERTICA: 'varchar'},
-        'longblob': {DatabaseType.GLUE: 'string', DatabaseType.VERTICA: 'varchar'},
-        'mediumtext': {DatabaseType.GLUE: 'string', DatabaseType.VERTICA: 'varchar'},
-        'longtext': {DatabaseType.GLUE: 'string', DatabaseType.VERTICA: 'varchar'},
+        'char': {DatabaseType.GLUE: 'char', DatabaseType.VERTICA: 'CHAR'},
+        'varchar': {DatabaseType.GLUE: 'string', DatabaseType.VERTICA: 'VARCHAR'},
+        'text': {DatabaseType.GLUE: 'string', DatabaseType.VERTICA: 'VARCHAR'},
+        'tinytext': {DatabaseType.GLUE: 'string', DatabaseType.VERTICA: 'VARCHAR'},
+        'longblob': {DatabaseType.GLUE: 'string', DatabaseType.VERTICA: 'VARCHAR'},
+        'mediumtext': {DatabaseType.GLUE: 'string', DatabaseType.VERTICA: 'VARCHAR'},
+        'longtext': {DatabaseType.GLUE: 'string', DatabaseType.VERTICA: 'VARCHAR'},
         # specials
-        'enum': {DatabaseType.GLUE: 'string', DatabaseType.VERTICA: 'varchar'}
+        'enum': {DatabaseType.GLUE: 'string', DatabaseType.VERTICA: 'VARCHAR'}
     }
 
     @staticmethod
@@ -166,13 +162,13 @@ class TableDef(object):
 
     @classmethod
     def from_query(cls, data):
-        table_name = data[0]
-        json_columns = sorted(json.loads(data[1]), key=lambda x: x['ordinal_position'])
-        columns = list(map(lambda c: ColumnDef.from_query(c), json_columns))
+        table_name = data['TABLE_NAME']
+        base_columns = sorted(json.loads(data['COLUMNS']), key=lambda x: x['ordinal_position'])
+        columns = list(map(lambda c: ColumnDef.from_query(c), base_columns))
         primary_keys = list(map(lambda c: BaseColumnDef.from_query(c),
-                                filter(lambda x: str(x['column_key']) == 'PRI', json_columns)))
+                                filter(lambda x: str(x['column_key']) == 'PRI', base_columns)))
         unique_keys = list(map(lambda c: BaseColumnDef.from_query(c),
-                               filter(lambda x: str(x['column_key']) == 'UNI', json_columns)))
+                               filter(lambda x: str(x['column_key']) == 'UNI', base_columns)))
         return cls(table_name, columns, primary_keys, unique_keys)
 
     @staticmethod
@@ -180,8 +176,7 @@ class TableDef(object):
         return list(map(lambda x: fn(x), json.loads(data['Parameters'][key])))
 
     @classmethod
-    def from_glue(cls, data):
-        table = data['Table']
+    def from_glue(cls, table):
         name = table['Name']
         columns = TableDef._build_from_parameters(table, 'columns', ColumnDef.from_json)
         primary_keys = TableDef._build_from_parameters(table, 'primary_keys', BaseColumnDef.from_json)
@@ -231,137 +226,3 @@ class TableDef(object):
                 'unique_keys': unique_keys,
             },
         }
-
-
-def _write(records: list, file: str, records_transform_fn=None) -> None:
-    with open(file, 'wb') as f:
-        for record in records:
-            if not record:
-                continue
-            record_to_write = records_transform_fn(record) if records_transform_fn else record
-            f.write((json.dumps(record_to_write, default=lambda o: o.__dict__) + '\n').encode('utf8'))
-
-
-def _read(file, records_transform_fn=None) -> list:
-    with open(file, 'r') as f:
-        file_lines = []
-        for line in f.readline():
-            file_lines.append(records_transform_fn(line) if records_transform_fn else line)
-        return file_lines
-
-
-def _get_conn():
-    from dotenv import load_dotenv
-    load_dotenv()
-    import os
-    conn_config = {
-        'host': os.getenv('PRODUCTION_HOST'),
-        'user': os.getenv('PRODUCTION_USER'),
-        'password': os.getenv('PRODUCTION_PASSWORD'),
-        'database': os.getenv('PRODUCTION_DB'),
-        'port': int(os.getenv('PRODUCTION_PORT'))
-    }
-    return MySQLdb.connect(**conn_config)
-
-
-def _query(sql: str,
-           set_session_variable=None) -> list:
-    # set session variables before executing the query
-    # Sending query to mysql database and fetching results
-    if set_session_variable is None:
-        set_session_variable = {}
-    with closing(_get_conn()) as conn:
-        with closing(conn.cursor()) as cur:
-            if set_session_variable:
-                for k, v in set_session_variable.items():
-                    set_session = f'SET SESSION {k}={v}'
-                    cur.execute(set_session)
-            cur.execute(sql)
-            return cur.fetchall()
-
-
-_hook = boto3.session.Session(region_name='us-west-2').client('glue')
-
-
-def _get_table(db: str, table_name: str) -> Optional[TableDef]:
-    try:
-        table_def = _hook.get_table(DatabaseName=db,
-                                    Name=table_name)
-        return TableDef.from_glue(table_def)
-    except Exception as err:
-        if 'EntityNotFoundException' in str(err):
-            return None
-        else:
-            _raise_error('_get_table', err)
-
-
-def _create_table(db: str, table_def: TableDef):
-    table_input = table_def.to_glue(db)
-    try:
-        _hook.create_table(DatabaseName=db,
-                           TableInput=table_input)
-        print(f'created table {db}.{table_def.name}')
-    except Exception as err:
-        if 'AlreadyExistsException' in str(err):
-            pass
-        else:
-            _raise_error('_create_table', err)
-
-
-def _drop_table(db: str, table_name: str):
-    try:
-        _hook.delete_table(DatabaseName=db,
-                           Name=table_name)
-    except Exception as err:
-        _raise_error('_drop_table', err)
-
-
-def _update_table(db: str, table_def: TableDef):
-    table_input = table_def.to_glue(db)
-    try:
-        _hook.update_table(DatabaseName=db,
-                           TableInput=table_input)
-        print(f'updated table {db}.{table_def.name}')
-    except Exception as err:
-        _raise_error('_update_table', err)
-
-
-def _raise_error(method: str, err: Exception):
-    print(f'{method} found an error : ' + str(err))
-    raise AirflowException(f'|\n\nManual Exception, with {method}. the Exception is: ' + str(err))
-
-
-production_db = "seekingalpha_production"
-
-
-def _create_glue_table(s: str, force: bool = False) -> None:
-    table_def = TableDef.from_json(json.loads(s))
-    if force:
-        _drop_table(production_db, table_def.name)
-    table = _get_table(production_db, table_def.name)
-    if table:
-        if table_def == table:
-            print(f'skipping table {table_def.name}')
-        else:
-            _update_table(production_db, table_def)
-    else:
-        _create_table(production_db, table_def)
-        table = _get_table(production_db, table_def.name)
-    print(json.dumps(table, default=lambda o: o.__dict__, indent=2))
-
-
-_session_variables = {'group_concat_max_len': 1000000}
-if __name__ == '__main__':
-    # _get_table('dbr', 'active_users_table')
-
-    # with open('mysql_schema_dump.sql') as m:
-    #     query = m.read()
-    # raw_records = _query(query, _session_variables)
-    # _write(raw_records, 'records.json')
-    raw_records = []
-    with open('mariadb_schema_dump.json', 'r') as r:
-        lines = r.read().split('\n')
-        for line in lines:
-            # line = lines[-1]
-            if line:
-                _create_glue_table(line, force=True)
