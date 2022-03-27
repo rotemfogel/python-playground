@@ -10,6 +10,8 @@ class EverFlowRecord:
     product: str
     subscription_type: str
     rate_plan: str
+    attribution_affid: int
+    attribution_oid: int
 
     @classmethod
     def from_list(cls, record: List[Any]):
@@ -17,10 +19,15 @@ class EverFlowRecord:
                               user_id=record[1],
                               product=record[2],
                               subscription_type=record[3],
-                              rate_plan=record[4])
+                              rate_plan=record[4],
+                              attribution_affid=record[5],
+                              attribution_oid=record[6])
 
 
 def to_everflow_record(records: Union[List[List[Any]], str]) -> List[EverFlowRecord]:
     if type(records) == str:
         records = json.loads(records)
-    return [EverFlowRecord.from_list(r) for r in records]
+    # if json is not an empty list (e.g. [])
+    if records:
+        return [EverFlowRecord.from_list(r) for r in records]
+    return records
