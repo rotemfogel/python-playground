@@ -1,6 +1,5 @@
-import json
 from dataclasses import dataclass
-from typing import List, Any, Union
+from typing import List, Any
 
 
 @dataclass
@@ -12,6 +11,7 @@ class EverFlowRecord:
     rate_plan: str
     attribution_affid: int
     attribution_oid: int
+    attribution_transaction: str
 
     @classmethod
     def from_list(cls, record: List[Any]):
@@ -21,13 +21,12 @@ class EverFlowRecord:
                               subscription_type=record[3],
                               rate_plan=record[4],
                               attribution_affid=record[5],
-                              attribution_oid=record[6])
+                              attribution_oid=record[6],
+                              attribution_transaction=record[7])
 
 
-def to_everflow_record(records: Union[List[List[Any]], str]) -> List[EverFlowRecord]:
-    if type(records) == str:
-        records = json.loads(records)
-    # if json is not an empty list (e.g. [])
-    if records:
-        return [EverFlowRecord.from_list(r) for r in records]
-    return records
+def to_everflow_record(records: List[Any]) -> List[EverFlowRecord]:
+    try:
+        return list(map(lambda r: EverFlowRecord.from_list(r), records))
+    except Exception:
+        return []

@@ -1,5 +1,5 @@
 import time
-from typing import List, Dict, Any, Union
+from typing import List, Dict, Any
 
 import requests
 from airflow.exceptions import AirflowException
@@ -10,7 +10,7 @@ from airfart.everflow.everflow import EverFlowRecord, to_everflow_record
 class EverFlowOperator(object):
 
     def __init__(self,
-                 records: Union[List[List[Any]], str]):
+                 records: List[List[Any]]):
         super().__init__()
         self.records = records
         self.retries = 3
@@ -42,32 +42,42 @@ class EverFlowOperator(object):
             event_config = everflow_config['event_id']
             failures = []
             for record in everflow_records:
-                user_id = str(record.user_id)
-                # send register
-                register_query_params = {'gclid': user_id,
-                                         'affid': record.attribution_affid,
-                                         'oid': record.attribution_oid,
-                                         'async': 'json'}
+                transaction = record.attribution_transaction
+                if transaction:
+                    user_id = str(record.user_id)
+                    # send register
+                    register_query_params = {'gclid': user_id,
+                                             'affid': record.attribution_affid,
+                                             'oid': record.attribution_oid,
+                                             'transaction': transaction,
+                                             'async': 'json'}
 
-                status_code = self._send_http(f'{url}/sdk/click', register_query_params)
-                if status_code == 200:
-                    # need to wait until record is saved in Everflow systems
-                    time.sleep(1)
+                    status_code = self._send_http(f'{url}/sdk/click', register_query_params)
+                    if status_code == 200:
+                        print(f'sent register callback for record {record}')
+                        # need to wait until record is saved in Everflow systems
+                        time.sleep(1)
 
-                    # send the event
-                    product = record.product
-                    subscription_type = record.subscription_type
-                    rate_plan = record.rate_plan
+                        # send the event
+                        product = record.product
+                        subscription_type = record.subscription_type
+                        rate_plan = record.rate_plan
 
-                    event_query_params.update(dict(gclid=user_id,
-                                                   adv_event_id=event_config[product][subscription_type][rate_plan]))
-                    status_code = self._send_http(url, event_query_params)
-                    if status_code != 200:
+                        event_query_params.update(dict(gclid=user_id,
+                                                       adv_event_id=event_config[product][subscription_type][
+                                                           rate_plan],
+                                                       transaction_id=transaction))
+                        status_code = self._send_http(url, event_query_params)
+                        if status_code != 200:
+                            failures.append(record)
+                        else:
+                            print(f'sent event callback for record {record}')
+                    else:
                         failures.append(record)
                 else:
-                    failures.append(record)
+                    print(f'skipping record {record} due to missing transaction')
 
-            if failures:
-                raise AirflowException(f"operator failed to send {len(self.records)} "
-                                       f"out of {len(self.records)}\nfailed records: {failures}")
+                if failures:
+                    raise AirflowException(f"operator failed to send {len(everflow_records)} "
+                                           f"out of {len(everflow_records)}\nfailed records: {failures}")
         print("all done")
