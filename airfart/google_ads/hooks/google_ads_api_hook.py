@@ -39,10 +39,10 @@ class GoogleAdsApiHook(BaseHook):
         logging.getLogger('google.ads.googleads.client').setLevel(logging_level)
 
     def get_conn(self):
-        if self.client is None:
+        if self.__client is None:
             credentials = json.loads(os.getenv('google_ads_credentials'))
-            self.client = GoogleAdsClient.load_from_dict(credentials, version="v9")
-        return self.client
+            self.__client = GoogleAdsClient.load_from_dict(credentials, version="v9")
+        return self.__client
 
     def _get_search_service(self):
         if not self.__search_service:

@@ -14,6 +14,7 @@ class GoogleAdsApiOperator(BaseDataToS3Operator):
                  database: str,
                  table: str,
                  customer_id: str,
+                 post_db_path: str = None,
                  method: GoogleAdsApiType = GoogleAdsApiType.Search,
                  output_format: str = OutputFormat.PARQUET,
                  records_transform_fn: callable = None,
@@ -24,18 +25,18 @@ class GoogleAdsApiOperator(BaseDataToS3Operator):
                          database=database,
                          file_name=table,
                          output_format=output_format,
-                         post_db_path=f'{table}/account_id={customer_id}',
+                         post_db_path=post_db_path,
                          records_transform_fn=records_transform_fn,
                          execution_timeout=execution_timeout,
                          **kwargs)
         self.method = method
-        self.hook = None
         self.customer_id = customer_id
+        self.__hook = None
 
     def get_hook(self):
-        if not self.hook:
-            self.hook = GoogleAdsApiHook(api_type=self.method, customer_id=self.customer_id)
-        return self.hook
+        if not self.__hook:
+            self.__hook = GoogleAdsApiHook(api_type=self.method, customer_id=self.customer_id)
+        return self.__hook
 
     def execute(self):
         return super().execute()
