@@ -97,26 +97,26 @@ class BaseDataToS3Operator(LoggingMixin, ABC):
 
         df = self.get_pandas_df()
 
-        if self.output_format == OutputFormat.PARQUET:
-            if self.records_transform_fn:
-                df = self.records_transform_fn(df)
-            df.to_parquet(uri, engine='pyarrow', allow_truncated_timestamps=True)
-        else:
-            if self.output_format == OutputFormat.JSON:
-                columns = df.select_dtypes(include=['datetime64']).columns
-                for column in columns:
-                    df[column] = df[column].astype(str)
-                records = df.to_dict(orient="records")
-            else:  # self.CSV
-                records = df.to_csv(index=False, header=self.include_csv_headers).split("\n")
+        if not df.empty:
+            if self.output_format == OutputFormat.PARQUET:
+                if self.records_transform_fn:
+                    df = self.records_transform_fn(df)
+                df.to_parquet(uri, engine='pyarrow', allow_truncated_timestamps=True)
+            else:
+                if self.output_format == OutputFormat.JSON:
+                    columns = df.select_dtypes(include=['datetime64']).columns
+                    for column in columns:
+                        df[column] = df[column].astype(str)
+                    records = df.to_dict(orient="records")
+                else:  # self.CSV
+                    records = df.to_csv(index=False, header=self.include_csv_headers).split("\n")
 
-            # Copy to S3
-            self.log.info(f'about to write to file {uri}')
-            with smart_open.smart_open(uri, 'wb') as s3_file:
-                for record in records:
-                    if not record:
-                        continue
-                    record_to_write = self.records_transform_fn(record) if self.records_transform_fn else record
-                    s3_file.write((json.dumps(record_to_write, default=lambda o: o.__dict__) + '\n').encode('utf8'))
-
+                # Copy to S3
+                self.log.info(f'about to write to file {uri}')
+                with smart_open.smart_open(uri, 'wb') as s3_file:
+                    for record in records:
+                        if not record:
+                            continue
+                        record_to_write = self.records_transform_fn(record) if self.records_transform_fn else record
+                        s3_file.write((json.dumps(record_to_write, default=lambda o: o.__dict__) + '\n').encode('utf8'))
         self.log.info('All done')

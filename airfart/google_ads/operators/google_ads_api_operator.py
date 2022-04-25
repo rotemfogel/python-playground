@@ -13,7 +13,7 @@ class GoogleAdsApiOperator(BaseDataToS3Operator):
                  bucket: str,
                  database: str,
                  table: str,
-                 customer_id: str,
+                 account_id: str,
                  post_db_path: str = None,
                  method: GoogleAdsApiType = GoogleAdsApiType.Search,
                  output_format: str = OutputFormat.PARQUET,
@@ -30,12 +30,12 @@ class GoogleAdsApiOperator(BaseDataToS3Operator):
                          execution_timeout=execution_timeout,
                          **kwargs)
         self.method = method
-        self.customer_id = customer_id
+        self.account_id = account_id
         self.__hook = None
 
     def get_hook(self):
         if not self.__hook:
-            self.__hook = GoogleAdsApiHook(api_type=self.method, customer_id=self.customer_id)
+            self.__hook = GoogleAdsApiHook(api_type=self.method, account_id=self.account_id)
         return self.__hook
 
     def execute(self):

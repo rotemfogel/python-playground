@@ -24,13 +24,13 @@ class GoogleAdsApiHook(BaseHook):
 
     def __init__(self,
                  api_type: GoogleAdsApiType,
-                 customer_id: str,
+                 account_id: str,
                  logging_level: int = logging.INFO) -> None:
         super().__init__()
         if api_type not in self.__ALLOWED_API_TYPES:
             raise AirflowException(f'Unknown GoogleAdsApiType: {api_type}')
         self.api_type = api_type
-        self.customer_id = customer_id
+        self.account_id = account_id
         self.__client = None
         self.__search_service = None
         self.__stream_service = None
@@ -61,7 +61,7 @@ class GoogleAdsApiHook(BaseHook):
         search api
         """
         request = self._get_search_service()
-        request.customer_id = self.customer_id
+        request.account_id = self.account_id
         request.query = sql
         results = []
         # emulate do-while
@@ -76,7 +76,7 @@ class GoogleAdsApiHook(BaseHook):
         """
         stream api
         """
-        stream_result = self._get_stream_service().search_stream(customer_id=self.customer_id, query=sql)
+        stream_result = self._get_stream_service().search_stream(customer_id=self.account_id, query=sql)
         results = []
         for batch in stream_result:
             for row in batch.results:
