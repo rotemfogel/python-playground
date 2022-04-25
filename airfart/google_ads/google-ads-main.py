@@ -40,8 +40,8 @@ if __name__ == "__main__":
     table = 'campaign'
     accounts = json.loads(os.getenv('google_accounts'))
 
-    start: DateTime = pendulum.DateTime(2022, 4, 24)
-    until: DateTime = pendulum.DateTime(2022, 4, 25)
+    start: DateTime = pendulum.DateTime(2022, 4, 25)
+    until: DateTime = pendulum.DateTime(2022, 4, 26)
 
     # dates = [pendulum.DateTime(2022, 4, 17)]
     dates = []
