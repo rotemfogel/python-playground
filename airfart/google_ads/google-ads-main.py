@@ -52,10 +52,11 @@ if __name__ == "__main__":
     table = 'campaigns'
     google_ads_db = 'googleads'
 
-    for date in dates:
+    for dt in dates:
         for account_id in accounts:
             try:
-                date_str = date = date.format('YYYY-MM-DD')
+                date_str = dt.format('YYYY-MM-DD')
+                print(f'getting data for account {account_id} at {date_str}')
                 operator = GoogleAdsApiOperator(
                     sql=query.format(date=date_str),
                     bucket='seekingalpha-data',

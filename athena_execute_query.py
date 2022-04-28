@@ -41,12 +41,16 @@ class AthenaQueryExecutor():
             if 'QueryExecution' in response and \
                     'Status' in response['QueryExecution'] and \
                     'State' in response['QueryExecution']['Status']:
-                state = response['QueryExecution']['Status']['State']
-            print(state)
+                status = response['QueryExecution']['Status']
+                state = status['State']
             if state == 'FAILED':
-                raise Exception(f'query [{query}] failed')
+                reason = status['StateChangeReason']
+                if 'AlreadyExistsException' in reason:
+                    break
+                raise Exception(f'query [{query}] failed: {reason}')
             elif state == 'SUCCEEDED':
                 break
+            print(state)
             time.sleep(1)
 
     def execute(self):
