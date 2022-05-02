@@ -68,8 +68,8 @@ if __name__ == "__main__":
 
     accounts = json.loads(os.getenv('google_accounts'))
 
-    start: DateTime = pendulum.DateTime(2022, 4, 25)
-    until: DateTime = pendulum.DateTime(2022, 4, 26)
+    start: DateTime = pendulum.DateTime(2021, 1, 1)
+    until: DateTime = pendulum.DateTime(2022, 5, 3)
 
     # dates = [pendulum.DateTime(2022, 4, 17)]
     dates = []
@@ -84,7 +84,7 @@ if __name__ == "__main__":
         for account_id in accounts:
             date_str = dt.format('YYYY-MM-DD')
             try:
-                print(f'getting ]{table}[ data for account [{account_id}] at [{date_str}]')
+                print(f'getting [{table}] data for account [{account_id}] at [{date_str}]')
                 operator = GoogleAdsApiOperator(
                     sql=queries[table].format(date=date_str),
                     bucket='seekingalpha-data',
