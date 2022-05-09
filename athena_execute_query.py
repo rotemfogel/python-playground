@@ -74,8 +74,8 @@ if __name__ == '__main__':
     parser.add_argument('--sql', help='sql file to process')
     parser.add_argument('--query', help='query to process')
     args = parser.parse_args()
-    assert args.sql or args.query, 'must provide either [sql] or pquery] parameter'
-    assert not (args.sql and args.query), 'cannot provide both [sql] or pquery] parameter'
+    assert args.sql or args.query, 'must provide either [sql] or [query] parameter'
+    assert not (args.sql and args.query), 'cannot provide both [sql] or [query] parameter'
     if args.sql:
         assert args.sql[-4:] == '.sql', 'file must end with .sql'
     qe = AthenaQueryExecutor(sql=args.sql, query=args.query)

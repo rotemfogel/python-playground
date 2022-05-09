@@ -63,13 +63,73 @@ if __name__ == "__main__":
                             metrics.cross_device_conversions
                        FROM ad_group
                       WHERE metrics.impressions > 1
-                        AND segments.date = '{date}' '''
+                        AND segments.date = '{date}' ''',
+        geo='''SELECT geographic_view.country_criterion_id,
+                      geographic_view.resource_name,
+                      geographic_view.location_type,
+                      ad_group.id,
+                      ad_group.name,
+                      campaign.id,
+                      campaign.name,
+                      campaign.start_date,
+                      segments.device,
+                      segments.date,
+                      metrics.impressions,
+                      metrics.average_cpc,
+                      metrics.clicks,
+                      metrics.video_views,
+                      metrics.interactions,
+                      metrics.ctr,
+                      metrics.all_conversions,
+                      metrics.conversions,
+                      metrics.view_through_conversions,
+                      metrics.cross_device_conversions
+                 FROM geographic_view
+                WHERE metrics.impressions > 1
+                  AND segments.date = '{date}'
+            ''',
+        keywords='''SELECT campaign.base_campaign,
+                           campaign.bidding_strategy,
+                           campaign.id,
+                           campaign.labels,
+                           campaign.name,
+                           campaign.status,
+                           ad_group.base_ad_group,
+                           ad_group.id,
+                           ad_group.labels,
+                           ad_group.name,
+                           ad_group.target_cpa_micros,
+                           ad_group.percent_cpc_bid_micros,
+                           ad_group.status,
+                           ad_group_criterion.keyword.text, 
+                           ad_group_criterion.keyword.match_type,
+                           metrics.absolute_top_impression_percentage,
+                           metrics.all_conversions,
+                           metrics.clicks,
+                           metrics.conversions,
+                           metrics.engagements,
+                           metrics.impressions,
+                           metrics.historical_quality_score,
+                           metrics.historical_search_predicted_ctr,
+                           metrics.historical_landing_page_quality_score,
+                           metrics.historical_creative_quality_score,
+                           metrics.interactions,
+                           metrics.search_impression_share,
+                           metrics.search_top_impression_share,
+                           metrics.video_views,
+                           metrics.average_cpc,
+                           metrics.cross_device_conversions,
+                           segments.date 
+                      FROM keyword_view
+                     WHERE metrics.impressions > 1
+                       AND segments.date = '{date}' 
+        '''
     )
 
     accounts = json.loads(os.getenv('google_accounts'))
 
     start: DateTime = pendulum.DateTime(2021, 1, 1)
-    until: DateTime = pendulum.DateTime(2022, 5, 3)
+    until: DateTime = pendulum.DateTime(2022, 5, 10)
 
     # dates = [pendulum.DateTime(2022, 4, 17)]
     dates = []
@@ -77,7 +137,7 @@ if __name__ == "__main__":
     for i in range(0, diff):
         dates.append(start.add(days=i))
 
-    table = 'ad_groups'
+    table = 'keywords'
     google_ads_db = 'googleads'
 
     for dt in dates:
