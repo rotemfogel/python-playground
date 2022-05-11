@@ -8,7 +8,7 @@ import boto3
 from dotenv import load_dotenv
 
 
-class AthenaQueryExecutor():
+class AthenaQueryExecutor:
     def __init__(self,
                  sql: Optional[str] = None,
                  query: Optional[str] = None) -> None:
@@ -36,7 +36,7 @@ class AthenaQueryExecutor():
         execution_id = response['QueryExecutionId']
         state = 'RUNNING'
 
-        while (state in ['RUNNING', 'QUEUED']):
+        while state in ['RUNNING', 'QUEUED']:
             response = client.get_query_execution(QueryExecutionId=execution_id)
             if 'QueryExecution' in response and \
                     'Status' in response['QueryExecution'] and \

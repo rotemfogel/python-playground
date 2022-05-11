@@ -122,14 +122,43 @@ if __name__ == "__main__":
                            segments.date 
                       FROM keyword_view
                      WHERE metrics.impressions > 1
-                       AND segments.date = '{date}' 
+                       AND segments.date = '{date}'
+        ''',
+        landing_pages='''SELECT ad_group.base_ad_group, 
+                                ad_group.campaign, 
+                                ad_group.id, 
+                                ad_group.name, 
+                                ad_group.labels, 
+                                campaign.base_campaign, 
+                                campaign.bidding_strategy, 
+                                campaign.final_url_suffix, 
+                                campaign.id, 
+                                campaign.name, 
+                                campaign.serving_status, 
+                                segments.ad_network_type, 
+                                segments.device, 
+                                segments.date, 
+                                metrics.all_conversions, 
+                                metrics.average_cpc, 
+                                metrics.clicks, 
+                                metrics.conversions, 
+                                metrics.cross_device_conversions, 
+                                metrics.engagements, 
+                                metrics.impressions, 
+                                metrics.speed_score, 
+                                metrics.valid_accelerated_mobile_pages_clicks_percentage, 
+                                metrics.video_views, 
+                                customer.id 
+                           FROM landing_page_view
+                          WHERE metrics.impressions > 1
+                            AND segments.date = '{date}'
         '''
     )
 
     accounts = json.loads(os.getenv('google_accounts'))
 
-    start: DateTime = pendulum.DateTime(2021, 1, 1)
-    until: DateTime = pendulum.DateTime(2022, 5, 10)
+    start: DateTime = pendulum.DateTime(2021, 1, 10)
+    until: DateTime = pendulum.DateTime(2022, 5, 11)
 
     # dates = [pendulum.DateTime(2022, 4, 17)]
     dates = []
@@ -137,7 +166,7 @@ if __name__ == "__main__":
     for i in range(0, diff):
         dates.append(start.add(days=i))
 
-    table = 'keywords'
+    table = 'landing_pages'
     google_ads_db = 'googleads'
 
     for dt in dates:
