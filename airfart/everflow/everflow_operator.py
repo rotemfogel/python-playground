@@ -1,3 +1,4 @@
+import logging
 import time
 from typing import List, Dict, Any
 
@@ -10,10 +11,14 @@ from airfart.everflow.everflow import EverFlowRecord, to_everflow_record
 class EverFlowOperator(object):
 
     def __init__(self,
-                 records: List[List[Any]]):
+                 records: List[List[Any]],
+                 report_click: bool = True,
+                 ):
         super().__init__()
         self.records = records
         self.retries = 3
+        self.report_click = report_click
+        self.log = logging.getLogger(self.__class__.__module__ + '.' + self.__class__.__name__)
 
     def _send_http(self, url: str, query_params: Dict[str, Any]) -> int:
         status_code = 0
@@ -40,44 +45,41 @@ class EverFlowOperator(object):
                                       nid=everflow_config['nid'])
 
             event_config = everflow_config['event_id']
-            failures = []
+            failures = set()
             for record in everflow_records:
-                transaction = record.attribution_transaction
-                if transaction:
-                    user_id = str(record.user_id)
+                user_id = str(record.user_id)
+                status_code = 200
+                if self.report_click:
                     # send register
                     register_query_params = {'gclid': user_id,
                                              'affid': record.attribution_affid,
                                              'oid': record.attribution_oid,
-                                             'transaction': transaction,
+                                             'transaction': record.attribution_transaction,
                                              'async': 'json'}
 
                     status_code = self._send_http(f'{url}/sdk/click', register_query_params)
-                    if status_code == 200:
-                        print(f'sent register callback for record {record}')
+                    if status_code != 200:
+                        failures.add(record)
+                    else:
+                        self.log.info(f'sent click callback for record {record}')
                         # need to wait until record is saved in Everflow systems
                         time.sleep(1)
+                if status_code == 200:
+                    # send the event
+                    product = record.product
+                    subscription_type = record.subscription_type
+                    rate_plan = record.rate_plan
 
-                        # send the event
-                        product = record.product
-                        subscription_type = record.subscription_type
-                        rate_plan = record.rate_plan
-
-                        event_query_params.update(dict(gclid=user_id,
-                                                       adv_event_id=event_config[product][subscription_type][
-                                                           rate_plan],
-                                                       transaction_id=transaction))
-                        status_code = self._send_http(url, event_query_params)
-                        if status_code != 200:
-                            failures.append(record)
-                        else:
-                            print(f'sent event callback for record {record}')
+                    event_query_params.update(dict(gclid=user_id,
+                                                   adv_event_id=event_config[product][subscription_type][
+                                                       rate_plan],
+                                                   transaction_id=record.attribution_transaction))
+                    status_code = self._send_http(url, event_query_params)
+                    if status_code != 200:
+                        failures.add(record)
                     else:
-                        failures.append(record)
-                else:
-                    print(f'skipping record {record} due to missing transaction')
-
-                if failures:
-                    raise AirflowException(f"operator failed to send {len(everflow_records)} "
-                                           f"out of {len(everflow_records)}\nfailed records: {failures}")
-        print("all done")
+                        self.log.info(f'sent conversion callback for record {record}')
+            if failures:
+                raise AirflowException(f"operator failed to send {len(failures)} "
+                                       f"out of {len(self.records)}\nfailed records: {failures}")
+        self.log.info("all done")
