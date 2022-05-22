@@ -59,9 +59,9 @@ class EverFlowOperator(object):
 
                     status_code = self._send_http(f'{url}/sdk/click', register_query_params)
                     if status_code != 200:
-                        failures.add(record)
+                        failures.add(json.dumps(record.__dict__))
                     else:
-                        self.log.info(f'sent click callback for record {record}')
+                        self.log.info(f'sent click callback for record {str(record)}')
                         # need to wait until record is saved in Everflow systems
                         time.sleep(1)
                 if status_code == 200:
@@ -76,9 +76,9 @@ class EverFlowOperator(object):
                                                    transaction_id=record.attribution_transaction))
                     status_code = self._send_http(url, event_query_params)
                     if status_code != 200:
-                        failures.add(record)
+                        failures.add(json.dumps(record.__dict__))
                     else:
-                        self.log.info(f'sent conversion callback for record {record}')
+                        self.log.info(f'sent conversion callback for record {str(record)}')
             if failures:
                 raise AirflowException(f"operator failed to send {len(failures)} "
                                        f"out of {len(self.records)}\nfailed records: {failures}")
