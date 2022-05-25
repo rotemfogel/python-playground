@@ -3,7 +3,7 @@ import os
 
 import pendulum
 from dotenv import load_dotenv
-from pendulum import DateTime
+from pendulum import Date
 
 from airfart.google_ads.hooks.google_ads_api_hook import GoogleAdsApiType
 from airfart.google_ads.operators.google_ads_api_operator import GoogleAdsApiOperator
@@ -77,6 +77,7 @@ if __name__ == "__main__":
                       metrics.impressions,
                       metrics.average_cpc,
                       metrics.clicks,
+                      metrics.cost_micros,
                       metrics.video_views,
                       metrics.interactions,
                       metrics.ctr,
@@ -124,17 +125,18 @@ if __name__ == "__main__":
                      WHERE metrics.impressions > 1
                        AND segments.date = '{date}'
         ''',
-        landing_pages='''SELECT ad_group.base_ad_group, 
-                                ad_group.campaign, 
-                                ad_group.id, 
-                                ad_group.name, 
-                                ad_group.labels, 
+        landing_pages='''SELECT customer.id,
                                 campaign.base_campaign, 
                                 campaign.bidding_strategy, 
                                 campaign.final_url_suffix, 
                                 campaign.id, 
                                 campaign.name, 
                                 campaign.serving_status, 
+                                ad_group.base_ad_group, 
+                                ad_group.campaign, 
+                                ad_group.id, 
+                                ad_group.name, 
+                                ad_group.labels, 
                                 segments.ad_network_type, 
                                 segments.device, 
                                 segments.date, 
@@ -148,7 +150,8 @@ if __name__ == "__main__":
                                 metrics.speed_score, 
                                 metrics.valid_accelerated_mobile_pages_clicks_percentage, 
                                 metrics.video_views, 
-                                customer.id 
+                                landing_page_view.unexpanded_final_url,
+                                expanded_landing_page_view.expanded_final_url 
                            FROM landing_page_view
                           WHERE metrics.impressions > 1
                             AND segments.date = '{date}'
@@ -157,17 +160,15 @@ if __name__ == "__main__":
 
     accounts = json.loads(os.getenv('google_accounts'))
 
-    start: DateTime = pendulum.DateTime(2021, 1, 10)
-    until: DateTime = pendulum.DateTime(2022, 5, 11)
+    start: Date = pendulum.Date(2022, 5, 23)
+    until: Date = pendulum.Date.today().add(days=1)
 
     # dates = [pendulum.DateTime(2022, 4, 17)]
-    dates = []
     diff = start.diff(until).in_days()
-    for i in range(0, diff):
-        dates.append(start.add(days=i))
+    dates = [start.add(days=i) for i in range(0, diff)]
 
     table = 'landing_pages'
-    google_ads_db = 'googleads'
+    google_ads_db = 'rotem_googleads'
 
     for dt in dates:
         for account_id in accounts:
