@@ -160,15 +160,15 @@ if __name__ == "__main__":
 
     accounts = json.loads(os.getenv('google_accounts'))
 
-    start: Date = pendulum.Date(2022, 5, 23)
+    start: Date = pendulum.Date(2021, 1, 1)
     until: Date = pendulum.Date.today().add(days=1)
 
     # dates = [pendulum.DateTime(2022, 4, 17)]
     diff = start.diff(until).in_days()
     dates = [start.add(days=i) for i in range(0, diff)]
 
-    table = 'landing_pages'
-    google_ads_db = 'rotem_googleads'
+    table = 'geo'
+    google_ads_db = 'googleads'
 
     for dt in dates:
         for account_id in accounts:
@@ -180,7 +180,7 @@ if __name__ == "__main__":
                     bucket='seekingalpha-data',
                     database='dba',
                     table=table,
-                    post_db_path=f'{google_ads_db}/{table}/date_={date_str}/account_id={account_id}',
+                    post_db_path=f'/rotem/{google_ads_db}/input/{table}/date_={date_str}/account_id={account_id}',
                     method=GoogleAdsApiType.SearchStream,
                     account_id=account_id
                 )
