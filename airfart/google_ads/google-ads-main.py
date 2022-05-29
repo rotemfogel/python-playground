@@ -144,6 +144,7 @@ if __name__ == "__main__":
                                 metrics.average_cpc, 
                                 metrics.clicks, 
                                 metrics.conversions, 
+                                metrics.cost_micros, 
                                 metrics.cross_device_conversions, 
                                 metrics.engagements, 
                                 metrics.impressions, 
@@ -167,7 +168,7 @@ if __name__ == "__main__":
     diff = start.diff(until).in_days()
     dates = [start.add(days=i) for i in range(0, diff)]
 
-    table = 'geo'
+    table = 'landing_pages'
     google_ads_db = 'googleads'
 
     for dt in dates:
@@ -180,7 +181,7 @@ if __name__ == "__main__":
                     bucket='seekingalpha-data',
                     database='dba',
                     table=table,
-                    post_db_path=f'/rotem/{google_ads_db}/input/{table}/date_={date_str}/account_id={account_id}',
+                    post_db_path=f'rotem/{google_ads_db}/input/{table}/date_={date_str}/account_id={account_id}',
                     method=GoogleAdsApiType.SearchStream,
                     account_id=account_id
                 )
