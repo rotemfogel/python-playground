@@ -20,7 +20,7 @@ _campaign_ids: list = json.loads(os.getenv('CAMPAIGN_IDS'))
 
 
 def _update_env_file(param: str, data: any) -> None:
-    src = '.env'
+    src = '../.env'
     trg = '.env.new'
     f = open(src, 'r')
     lines = f.readlines()
