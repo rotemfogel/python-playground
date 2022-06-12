@@ -2,8 +2,7 @@ from copy import deepcopy
 from pprint import pprint
 from typing import List
 
-input_date_value = "{{ macros.custom_macros.ds_ny(logical_date, days=1) }}"
-input_date = 'input_date'
+use_input_date = 'use_input_date'
 ignore_all_columns = 'ignore_all_columns'
 
 
@@ -11,18 +10,19 @@ def get_adjusted_template(entries: dict, steps_template: List[dict]) -> List[dic
     new_steps_template = deepcopy(steps_template)
     step_args = new_steps_template[0]['HadoopJarStep']['Args']
     search_entries = ['input_path', 'table', 'db', 'include_columns',
-                      ignore_all_columns, 'ignore_data_types', input_date]
+                      ignore_all_columns, 'ignore_data_types', use_input_date]
     keys = entries.keys()
     for element in search_entries:
         if element in keys:
+            arg = element.replace("_", "-")
             if element == ignore_all_columns:
-                step_args.extend([f'--{element.replace("_", "-")}'])
-            elif element == input_date:
+                step_args.extend([f'--{arg}'])
+            elif element == use_input_date:
                 # check: should append --input-date
                 if entries.get(element, False):
-                    step_args.extend([f'--{element.replace("_", "-")}', input_date_value])
+                    step_args.extend([f'--{arg}'])
             else:
-                step_args.extend([f'--{element.replace("_", "-")}', f'{{{{ params.{element} }}}}'])
+                step_args.extend([f'--{arg}', f'{{{{ params.{element} }}}}'])
     new_steps_template[0]['HadoopJarStep']['Args'] = step_args
     return new_steps_template
 
