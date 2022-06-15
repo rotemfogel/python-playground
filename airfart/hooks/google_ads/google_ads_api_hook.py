@@ -10,7 +10,7 @@ from google.ads.googleads.client import GoogleAdsClient
 from google.protobuf import json_format
 
 from airfart.base_hook import BaseHook
-from airfart.google_ads.model.google_ads_api_type import GoogleAdsApiType
+from airfart.model.google_ads.google_ads_api_type import GoogleAdsApiType
 
 load_dotenv()
 

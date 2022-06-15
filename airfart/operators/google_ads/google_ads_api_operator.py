@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from airfart.google_ads.hooks.google_ads_api_hook import GoogleAdsApiType, GoogleAdsApiHook
+from airfart.hooks.google_ads.google_ads_api_hook import GoogleAdsApiType, GoogleAdsApiHook
 from airfart.model.output_format import OutputFormat
 from airfart.operators.base_data_to_s3 import BaseDataToS3Operator
 

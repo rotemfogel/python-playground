@@ -1,7 +1,7 @@
 import itertools
 from typing import Set
 
-from airfart.glue_catalog import AwsGlueCatalogHook
+from airfart.hooks.glue_catalog.glue_catalog import GlueCatalogHook
 from airfart.s3 import AwsS3Hook
 
 
@@ -9,14 +9,16 @@ class GluePartitionCleanOperator:
     def __init__(self,
                  database_name: str,
                  table_name: str,
+                 region: str,
                  **kwargs
                  ) -> None:
         super().__init__(**kwargs)
         self.database_name = database_name
         self.table_name = table_name
+        self.region = region
 
     def execute(self, context=None):
-        glue_hook = AwsGlueCatalogHook()
+        glue_hook = GlueCatalogHook(region=self.region)
         table = glue_hook.get_table(database_name=self.database_name,
                                     table_name=self.table_name)
         partition_keys = list(map(lambda x: x['Name'], table['Table']['PartitionKeys']))

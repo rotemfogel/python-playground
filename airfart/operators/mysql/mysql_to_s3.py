@@ -1,6 +1,6 @@
 from typing import Any
 
-from airfart.dbapi.hooks.mysql_extended import MySqlExtendedHook
+from airfart.hooks.mysql.mysql_extended import MySqlExtendedHook
 from airfart.model.output_format import OutputFormat
 from airfart.operators.base_data_to_s3 import BaseDataToS3Operator
 

@@ -5,8 +5,8 @@ import pendulum
 from dotenv import load_dotenv
 from pendulum import Date
 
-from airfart.google_ads.hooks.google_ads_api_hook import GoogleAdsApiType
-from airfart.google_ads.operators.google_ads_api_operator import GoogleAdsApiOperator
+from airfart.model.google_ads.google_ads_api_type import GoogleAdsApiType
+from airfart.operators.google_ads.google_ads_api_operator import GoogleAdsApiOperator
 
 if __name__ == "__main__":
     load_dotenv()

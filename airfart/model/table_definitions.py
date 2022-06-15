@@ -1,6 +1,8 @@
 import json
 from abc import ABC
-from typing import List
+from typing import List, Any, Optional
+
+from airfart.utils.remove_empty_elements import remove_empty_elements
 
 
 class DatabaseType(object):
@@ -44,6 +46,8 @@ class DataTypeConverter(ABC):
         # characters
         'char': {DatabaseType.GLUE: 'char', DatabaseType.VERTICA: 'CHAR'},
         'varchar': {DatabaseType.GLUE: 'string', DatabaseType.VERTICA: 'VARCHAR'},
+        # support reverse build from Glue
+        'string': {DatabaseType.GLUE: 'string', DatabaseType.VERTICA: 'VARCHAR'},
         'text': {DatabaseType.GLUE: 'string', DatabaseType.VERTICA: 'VARCHAR'},
         'tinytext': {DatabaseType.GLUE: 'string', DatabaseType.VERTICA: 'VARCHAR'},
         'longblob': {DatabaseType.GLUE: 'string', DatabaseType.VERTICA: 'VARCHAR'},
@@ -55,11 +59,11 @@ class DataTypeConverter(ABC):
 
     @staticmethod
     def get_mapped_column(data_type: str, target_db: DatabaseType) -> str:
-        return DataTypeConverter.get_mapping(data_type)[target_db]
+        return DataTypeConverter.get_mapping(data_type).get(target_db)
 
     @staticmethod
-    def get_mapping(data_type: str) -> dict:
-        return DataTypeConverter._mapping[data_type]
+    def get_mapping(data_type: str) -> Optional[dict]:
+        return DataTypeConverter._mapping.get(data_type)
 
 
 class BaseColumnDef(object):
@@ -129,10 +133,14 @@ class TableDef(object):
 
     def __init__(self,
                  name: str,
+                 table_type: str,
+                 classification: Optional[str],
                  columns: List[ColumnDef],
                  primary_keys: List[BaseColumnDef] = None,
                  unique_keys: List[BaseColumnDef] = None):
         self.name = name
+        self.table_type = table_type
+        self.classification = classification
         self.columns = columns
         self.primary_keys = primary_keys
         self.unique_keys = unique_keys
@@ -147,6 +155,8 @@ class TableDef(object):
 
         if isinstance(other, TableDef):
             return self.name == other.name and \
+                   compare(self.table_type, other.table_type) and \
+                   compare(self.classification, other.classification) and \
                    compare(self.columns, other.columns) and \
                    compare(self.primary_keys, other.primary_keys) and \
                    compare(self.unique_keys, other.unique_keys)
@@ -154,38 +164,66 @@ class TableDef(object):
 
     @classmethod
     def from_json(cls, data):
-        name = data['name']
+        table_name = data['name']
+        table_type = data.get('table_type', 'EXTERNAL_TABLE')
+        classification = data.get('Parameters', {}).get('classification')
         columns = list(map(ColumnDef.from_json, data['columns']))
         primary_keys = list(map(BaseColumnDef.from_json, data['primary_keys'])) if data.get('primary_keys') else None
         unique_keys = list(map(BaseColumnDef.from_json, data['unique_keys'])) if data.get('unique_keys') else None
-        return cls(name, columns, primary_keys, unique_keys)
+        return cls(table_name, table_type, classification, columns, primary_keys, unique_keys)
 
     @classmethod
     def from_query(cls, data):
         table_name = data['TABLE_NAME']
+        table_type = 'EXTERNAL_TABLE'
+        classification = 'mysql'
         base_columns = sorted(json.loads(data['COLUMNS']), key=lambda x: x['ordinal_position'])
         columns = list(map(lambda c: ColumnDef.from_query(c), base_columns))
         primary_keys = list(map(lambda c: BaseColumnDef.from_query(c),
                                 filter(lambda x: str(x['column_key']) == 'PRI', base_columns)))
         unique_keys = list(map(lambda c: BaseColumnDef.from_query(c),
                                filter(lambda x: str(x['column_key']) == 'UNI', base_columns)))
-        return cls(table_name, columns, primary_keys, unique_keys)
+        return cls(table_name, table_type, classification, columns, primary_keys, unique_keys)
 
     @staticmethod
     def _build_from_parameters(data, key, fn) -> list:
-        return list(map(lambda x: fn(x), json.loads(data['Parameters'][key])))
+        if data['Parameters'].get(key):
+            return list(map(lambda x: fn(x), json.loads(data['Parameters'][key])))
+        return []
+
+    @staticmethod
+    def _from_storage_descriptor(table) -> list:
+        cols = table['StorageDescriptor']['Columns']
+        columns = []
+        for i in range(len(cols)):
+            col = cols[i]
+            ordinal_position = i + 1
+            data_type = col['Type']
+            columns.append(ColumnDef(name=col['Name'],
+                                     ordinal_position=ordinal_position,
+                                     data_type=data_type,
+                                     data_length=None,
+                                     mapping=DataTypeConverter.get_mapping(data_type)))
+            return columns
 
     @classmethod
     def from_glue(cls, table):
-        name = table['Name']
+        table_name = table['Name']
+        table_type = table.get('TableType', 'EXTERNAL_TABLE')
+        classification = table.get('Parameters', {}).get('classification')
         columns = TableDef._build_from_parameters(table, 'columns', ColumnDef.from_json)
+        if not columns:
+            columns = TableDef._from_storage_descriptor(table)
         primary_keys = TableDef._build_from_parameters(table, 'primary_keys', BaseColumnDef.from_json)
         unique_keys = TableDef._build_from_parameters(table, 'unique_keys', BaseColumnDef.from_json)
-        return cls(name, columns, primary_keys, unique_keys)
+        return cls(table_name, table_type, classification, columns, primary_keys, unique_keys)
+
+    def to_json(self):
+        return TableDef._to_json(self)
 
     @staticmethod
-    def _to_json(data: list) -> str:
-        return json.dumps(data, default=lambda o: o.__dict__) if data else '[]'
+    def _to_json(data: Any) -> str:
+        return json.dumps(data, default=lambda o: remove_empty_elements(o).__dict__) if data else '[]'
 
     def to_glue(self, database: str) -> dict:
         glue_columns = list(
@@ -198,7 +236,7 @@ class TableDef(object):
         columns = TableDef._to_json(self.columns)
         primary_keys = TableDef._to_json(self.primary_keys)
         unique_keys = TableDef._to_json(self.unique_keys)
-        return {
+        glue_dict = {
             'Name': self.name,
             'StorageDescriptor': {
                 'Columns': glue_columns,
@@ -218,11 +256,15 @@ class TableDef(object):
                 'StoredAsSubDirectories': False,
             },
             'PartitionKeys': [],
-            'TableType': 'EXTERNAL_TABLE',
+            'TableType': self.table_type,
             'Parameters': {
-                'classification': 'mysql',
                 'columns': columns,
                 'primary_keys': primary_keys,
                 'unique_keys': unique_keys,
             },
         }
+        if self.classification:
+            params = glue_dict['Parameters']
+            params.update(dict(classification=self.classification))
+            glue_dict.update(dict(Parameters=params))
+        return glue_dict

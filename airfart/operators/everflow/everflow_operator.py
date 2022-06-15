@@ -5,7 +5,7 @@ from typing import List, Dict, Any
 import requests
 from airflow.exceptions import AirflowException
 
-from airfart.everflow.everflow import EverFlowRecord, to_everflow_record
+from airfart.model.everflow.everflow import EverFlowRecord, to_everflow_record
 
 
 class EverFlowOperator(object):

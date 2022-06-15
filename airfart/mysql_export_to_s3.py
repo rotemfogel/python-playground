@@ -3,8 +3,8 @@ import os
 
 from dotenv import load_dotenv
 
-from airfart.dbapi.operators.mysql_to_s3 import MySQLToS3Operator
 from airfart.model.table_definitions import TableDef
+from airfart.operators.mysql.mysql_to_s3 import MySQLToS3Operator
 
 if __name__ == '__main__':
     load_dotenv()
