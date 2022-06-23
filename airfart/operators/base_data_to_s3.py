@@ -120,5 +120,5 @@ class BaseDataToS3Operator(LoggingMixin, ABC):
                         record_to_write = self.records_transform_fn(record) if self.records_transform_fn else record
                         s3_file.write((json.dumps(record_to_write, default=lambda o: o.__dict__) + '\n').encode('utf8'))
         else:
-            self.log.info('No data found')
+            self.log.warn('No data found')
         self.log.info('All done')

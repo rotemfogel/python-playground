@@ -21,6 +21,7 @@ if __name__ == "__main__":
                             campaign.bidding_strategy_type,
                             campaign.frequency_caps,
                             campaign.experiment_type,
+                            campaign.campaign_group,
                             campaign_budget.amount_micros,
                             segments.ad_network_type,
                             segments.hour,
@@ -43,11 +44,12 @@ if __name__ == "__main__":
                             ad_group.campaign,
                             ad_group.labels,
                             ad_group.base_ad_group,
+                            ad_group.cpc_bid_micros,
+                            ad_group.target_cpa_micros,
+                            ad_group.target_roas,
                             campaign.id,
                             campaign.base_campaign,
                             campaign.status,
-                            ad_group.cpc_bid_micros,
-                            ad_group.target_cpa_micros,
                             segments.date,
                             metrics.clicks,
                             metrics.cost_micros,
@@ -104,6 +106,7 @@ if __name__ == "__main__":
                            ad_group.status,
                            ad_group_criterion.keyword.text, 
                            ad_group_criterion.keyword.match_type,
+                           ad_group_criterion.criterion_id,
                            metrics.absolute_top_impression_percentage,
                            metrics.all_conversions,
                            metrics.clicks,
@@ -168,24 +171,25 @@ if __name__ == "__main__":
     diff = start.diff(until).in_days()
     dates = [start.add(days=i) for i in range(0, diff)]
 
-    table = 'landing_pages'
+    tables = ['campaigns', 'keywords']
     google_ads_db = 'googleads'
 
-    for dt in dates:
-        for account_id in accounts:
-            date_str = dt.format('YYYY-MM-DD')
-            try:
-                print(f'getting [{table}] data for account [{account_id}] at [{date_str}]')
-                operator = GoogleAdsApiOperator(
-                    sql=queries[table].format(date=date_str),
-                    bucket='seekingalpha-data',
-                    database='dba',
-                    table=table,
-                    post_db_path=f'rotem/{google_ads_db}/input/{table}/date_={date_str}/account_id={account_id}',
-                    method=GoogleAdsApiType.SearchStream,
-                    account_id=account_id
-                )
-                operator.execute()
-            except Exception as e:
-                print(f'error fetching {date_str} data for customer_id {account_id}')
-                raise e
+    for table in tables:
+        for dt in dates:
+            for account_id in accounts:
+                date_str = dt.format('YYYY-MM-DD')
+                try:
+                    print(f'getting [{table}] data for account [{account_id}] at [{date_str}]')
+                    operator = GoogleAdsApiOperator(
+                        sql=queries[table].format(date=date_str),
+                        bucket='seekingalpha-data',
+                        database='dba',
+                        table=table,
+                        post_db_path=f'rotem/{google_ads_db}/input/{table}/date_={date_str}/account_id={account_id}',
+                        method=GoogleAdsApiType.SearchStream,
+                        account_id=account_id
+                    )
+                    operator.execute()
+                except Exception as e:
+                    print(f'error fetching {date_str} data for customer_id {account_id}')
+                    raise e

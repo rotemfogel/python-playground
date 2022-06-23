@@ -6,7 +6,7 @@ from airflow.exceptions import AirflowException
 from dotenv import load_dotenv
 from pendulum import Date
 
-from airfart.operators.everflow import EverFlowOperator
+from airfart.operators.everflow.everflow_operator import EverFlowOperator
 
 if __name__ == '__main__':
     load_dotenv()

@@ -41,7 +41,7 @@ class GoogleAdsApiHook(BaseHook):
     def get_conn(self):
         if self.__client is None:
             credentials = json.loads(os.getenv('google_ads_credentials'))
-            self.__client = GoogleAdsClient.load_from_dict(credentials, version="v9")
+            self.__client = GoogleAdsClient.load_from_dict(credentials, version="v11")
         return self.__client
 
     def _get_search_service(self):
