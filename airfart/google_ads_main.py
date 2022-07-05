@@ -123,6 +123,9 @@ if __name__ == "__main__":
                            metrics.video_views,
                            metrics.average_cpc,
                            metrics.cross_device_conversions,
+                           metrics.cost_micros,
+                           metrics.ctr,
+                           metrics.average_cost,
                            segments.date 
                       FROM keyword_view
                      WHERE metrics.impressions > 1
@@ -164,14 +167,14 @@ if __name__ == "__main__":
 
     accounts = json.loads(os.getenv('google_accounts'))
 
-    start: Date = pendulum.Date(2021, 1, 1)
-    until: Date = pendulum.Date.today().add(days=1)
+    start: Date = pendulum.Date.today()  # pendulum.Date(2021, 1, 1)
+    until: Date = start.add(days=1)  # pendulum.Date.today().add(days=1)
 
     # dates = [pendulum.DateTime(2022, 4, 17)]
     diff = start.diff(until).in_days()
     dates = [start.add(days=i) for i in range(0, diff)]
 
-    tables = ['campaigns', 'keywords']
+    tables = ['keywords']
     google_ads_db = 'googleads'
 
     for table in tables:
