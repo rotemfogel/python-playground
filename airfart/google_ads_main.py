@@ -167,8 +167,8 @@ if __name__ == "__main__":
 
     accounts = json.loads(os.getenv('google_accounts'))
 
-    start: Date = pendulum.Date.today()  # pendulum.Date(2021, 1, 1)
-    until: Date = start.add(days=1)  # pendulum.Date.today().add(days=1)
+    start: Date = pendulum.Date(2021, 1, 1)
+    until: Date = pendulum.Date.today().add(days=1)
 
     # dates = [pendulum.DateTime(2022, 4, 17)]
     diff = start.diff(until).in_days()
