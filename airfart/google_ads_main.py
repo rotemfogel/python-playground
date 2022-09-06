@@ -162,19 +162,48 @@ if __name__ == "__main__":
                            FROM landing_page_view
                           WHERE metrics.impressions > 1
                             AND segments.date = '{date}'
-        '''
+        ''',
+        gender='''SELECT gender_view.resource_name,
+                         campaign.name,
+                         campaign.id,
+                         ad_group.id,
+                         ad_group.name,
+                         segments.date,
+                         metrics.clicks,
+                         metrics.all_conversions,
+                         metrics.impressions,
+                         metrics.cost_micros
+                    FROM gender_view
+                   WHERE metrics.impressions > 1
+                     AND segments.date = '{date}'
+               ''',
+        income_range='''SELECT campaign.id, 
+                               campaign.name, 
+                               ad_group.id, 
+                               ad_group.name, 
+                               metrics.clicks, 
+                               metrics.all_conversions, 
+                               metrics.impressions, 
+                               metrics.cost_micros, 
+                               segments.date, 
+                               segments.ad_network_type,
+                               income_range_view.resource_name 
+                          FROM income_range_view
+                         WHERE metrics.impressions > 1
+                           AND segments.date = '{date}'
+    '''
     )
 
     accounts = json.loads(os.getenv('google_accounts'))
 
-    start: Date = pendulum.Date(2021, 1, 1)
-    until: Date = pendulum.Date.today().add(days=1)
+    start: Date = pendulum.Date.today()  # pendulum.Date(2021, 5, 27)
+    until: Date = start.add(days=1)
 
     # dates = [pendulum.DateTime(2022, 4, 17)]
     diff = start.diff(until).in_days()
     dates = [start.add(days=i) for i in range(0, diff)]
 
-    tables = ['keywords']
+    tables = ['income_range']  # 'gender',
     google_ads_db = 'googleads'
 
     for table in tables:

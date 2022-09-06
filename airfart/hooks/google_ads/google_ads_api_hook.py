@@ -17,7 +17,7 @@ load_dotenv()
 
 class GoogleAdsApiHook(BaseHook):
     __ALLOWED_API_TYPES = [GoogleAdsApiType.Search, GoogleAdsApiType.SearchStream]
-    __GOOGLE_ADS_API_VERSION = 'v9'
+    __GOOGLE_ADS_API_VERSION = 'v10'
 
     __SEARCH_GOOGLE_ADS_SERVICE = 'SearchGoogleAdsRequest'
     __STREAM_GOOGLE_ADS_SERVICE = 'GoogleAdsService'
