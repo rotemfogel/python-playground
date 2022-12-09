@@ -10,7 +10,7 @@ name = "pypi"
 
 [packages]
 # from Airflow constraint file [https://raw.githubusercontent.com/apache/airflow/constraints-2.3.2/constraints-3.8.txt]
-apache-airflow = "==2.4.2"
+apache-airflow = "==2.4.3"
 apache-airflow-providers-amazon = "*"
 apache-airflow-providers-http = "*"
 apache-airflow-providers-imap = "*"
