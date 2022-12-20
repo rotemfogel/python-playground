@@ -10,7 +10,7 @@ name = "pypi"
 
 [packages]
 # from Airflow constraint file [https://raw.githubusercontent.com/apache/airflow/constraints-2.3.2/constraints-3.8.txt]
-apache-airflow = "==2.4.2"
+apache-airflow = "==2.5.0"
 apache-airflow-providers-amazon = "*"
 apache-airflow-providers-http = "*"
 apache-airflow-providers-imap = "*"
@@ -22,7 +22,6 @@ apache-airflow-providers-sendgrid = "*"
 apache-airflow-providers-slack = "*"
 apache-airflow-providers-sqlite = "*"
 apache-airflow-providers-ssh = "*"
-apache-airflow-providers-vertica = "*"
 authlib = "*"
 fsspec = "*"
 google-ads = "*"
@@ -42,4 +41,4 @@ nose = "*"
 coverage = "*"
 
 [requires]
-python_version = "3.8"
+python_version = "3.10"
