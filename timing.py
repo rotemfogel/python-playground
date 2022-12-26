@@ -1,9 +1,10 @@
 import asyncio
 import time
+from typing import Callable, Any
 
 
-def time_me(func):
-    async def decorator(*args, **params):
+def time_me(func: Callable[[Any], Any]):
+    async def decorator(*args: Any, **params: Any):
         async def process():
             if asyncio.iscoroutinefunction(func):
                 # function is a coroutine
