@@ -5,6 +5,7 @@ import time
 
 def ensure_int32(val):
     import sys
+
     min_size, max_size = -sys.maxsize - 1, sys.maxsize
     if not min_size < val < max_size:
         raise ValueError(f"product is not in int32 range: {val=}")
@@ -25,7 +26,9 @@ def do_list_multiply_foreach_handling_zeros(arr):
 def divide_euclid(dividend, divisor):
     if divisor == 0:
         raise ZeroDivisionError("Check your client code to handle zeros!")
-    dividend_sign, divisor_sign = int(math.copysign(1, dividend)), int(math.copysign(1, divisor))
+    dividend_sign, divisor_sign = int(math.copysign(1, dividend)), int(
+        math.copysign(1, divisor)
+    )
     dividend, divisor = abs(dividend), abs(divisor)
     quotient = 0
     while dividend >= divisor:
@@ -39,7 +42,7 @@ def divide_euclid(dividend, divisor):
 def divide_reverse(dividend, divisor):
     if divisor == 0:
         raise ZeroDivisionError("Check your client code to handle zeros!")
-    return int(dividend * divisor ** -1)
+    return int(dividend * divisor**-1)
 
 
 def assert_result(r):
@@ -47,7 +50,7 @@ def assert_result(r):
     assert r == [15, 10, 6, 30]
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     array = [2, 3, 5, 1]
     zeros_cnt = collections.Counter(array)[0]
     result = [0] * len(array)

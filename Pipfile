@@ -9,8 +9,8 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-# from Airflow constraint file [https://raw.githubusercontent.com/apache/airflow/constraints-2.3.2/constraints-3.8.txt]
-apache-airflow = "==2.5.0"
+# from Airflow constraint file [https://raw.githubusercontent.com/apache/airflow/constraints-2.5.1/constraints-3.10.txt]
+apache-airflow = "==2.5.1"
 apache-airflow-providers-amazon = "*"
 apache-airflow-providers-http = "*"
 apache-airflow-providers-imap = "*"
@@ -32,6 +32,7 @@ pyarrow = "*"
 pydantic = "*"
 python-dotenv = "*"
 s3fs = "*"
+shapely = "*"
 smart-open = "*"
 
 [dev-packages]

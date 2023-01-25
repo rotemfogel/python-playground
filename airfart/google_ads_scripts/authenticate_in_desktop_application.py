@@ -26,9 +26,7 @@ SCOPE = "https://www.googleapis.com/auth/adwords"
 
 
 def main(client_secrets_path, scopes):
-    flow = InstalledAppFlow.from_client_secrets_file(
-        client_secrets_path, scopes=scopes
-    )
+    flow = InstalledAppFlow.from_client_secrets_file(client_secrets_path, scopes=scopes)
 
     flow.run_local_server()
 
@@ -39,7 +37,7 @@ def main(client_secrets_path, scopes):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Generates OAuth 2.0 credentials with the specified "
-                    "client secrets file."
+        "client secrets file."
     )
     # The following argument(s) should be provided to run the example.
     parser.add_argument(
@@ -65,8 +63,6 @@ if __name__ == "__main__":
     configured_scopes = [SCOPE]
 
     if args.additional_scopes:
-        configured_scopes.extend(
-            args.additional_scopes.replace(" ", "").split(",")
-        )
+        configured_scopes.extend(args.additional_scopes.replace(" ", "").split(","))
 
     main(args.client_secrets_path, configured_scopes)

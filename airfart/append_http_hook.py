@@ -8,10 +8,7 @@ from airfart.http_hook import HttpHook
 
 
 class AppendHttpHook(BaseHttpHook):
-    def __init__(self,
-                 method: str = 'GET',
-                 http_conn_id: str = 'http_default'
-                 ) -> None:
+    def __init__(self, method: str = "GET", http_conn_id: str = "http_default") -> None:
         super().__init__()
         self._method: str = method
         self._connection: Connection = self.get_connection(http_conn_id)
@@ -29,10 +26,7 @@ class AppendHttpHook(BaseHttpHook):
     def get_pandas_df(self, sql):
         pass
 
-    def run(self,
-            endpoint: str = None,
-            data: dict = None,
-            headers: dict = None):
+    def run(self, endpoint: str = None, data: dict = None, headers: dict = None):
 
         if data:
             if self._extra_options:
@@ -41,7 +35,7 @@ class AppendHttpHook(BaseHttpHook):
             else:
                 self._extra_options = data
 
-        uri = '?' + urllib.parse.urlencode(self._extra_options)
+        uri = "?" + urllib.parse.urlencode(self._extra_options)
         if endpoint:
             endpoint = endpoint + uri
         else:

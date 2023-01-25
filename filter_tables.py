@@ -4,17 +4,21 @@ from typing import List, Optional
 
 from pendulum import DateTime
 
-tables = [f'tmp_table_{DateTime.now().subtract(days=i).format("%Y%m%d_%H")}' for i in [0, 1, 2, 3]]
+tables = [
+    f'tmp_table_{DateTime.now().subtract(days=i).format("%Y%m%d_%H")}'
+    for i in [0, 1, 2, 3]
+]
 filtered_tables = tables[1:]
 
 
 class FilterTables:
-
-    def __init__(self,
-                 database: str,
-                 tables_to_remove: List[str] = None,
-                 filter_fn=lambda tables_to_remove: tables_to_remove,
-                 fetch_tables: bool = False):
+    def __init__(
+        self,
+        database: str,
+        tables_to_remove: List[str] = None,
+        filter_fn=lambda tables_to_remove: tables_to_remove,
+        fetch_tables: bool = False,
+    ):
         super(FilterTables, self).__init__()
         self.database = database
         self.filter_fn = filter_fn
@@ -24,7 +28,7 @@ class FilterTables:
 
     def get_hook(self):
         if not self.hook:
-            self.hook = 'hook'
+            self.hook = "hook"
         return self.hook
 
     def execute(self) -> List[str]:
@@ -39,9 +43,14 @@ class FilterTables:
 
 
 def __match(today: DateTime, table: str) -> (str, DateTime):
-    match_name = re.search(r'^tmp_.*\d{4}\d{2}\d{2}', table)
-    match_date = re.search(r'\d{4}\d{2}\d{2}', table)
-    return table, datetime.strptime(match_date.group(), '%Y%m%d') if match_date and match_name else today
+    match_name = re.search(r"^tmp_.*\d{4}\d{2}\d{2}", table)
+    match_date = re.search(r"\d{4}\d{2}\d{2}", table)
+    return (
+        table,
+        datetime.strptime(match_date.group(), "%Y%m%d")
+        if match_date and match_name
+        else today,
+    )
 
 
 def __filter_tmp_tables(table_list: List[str]) -> List[str]:
@@ -53,30 +62,32 @@ def __filter_tmp_tables(table_list: List[str]) -> List[str]:
 
 if __name__ == "__main__":
     # no tables provided and no fetch
-    f = FilterTables(database='db')
+    f = FilterTables(database="db")
     f_tables = f.execute()
     assert f_tables == []
     print(f_tables)
 
     # tables provided
-    f = FilterTables(database='db', tables_to_remove=tables)
+    f = FilterTables(database="db", tables_to_remove=tables)
     f_tables = f.execute()
     assert f_tables == tables
     print(f_tables)
 
     # tables and filter provided
-    f = FilterTables(database='db', tables_to_remove=tables, filter_fn=__filter_tmp_tables)
+    f = FilterTables(
+        database="db", tables_to_remove=tables, filter_fn=__filter_tmp_tables
+    )
     f_tables = f.execute()
     assert f_tables == filtered_tables
     print(f_tables)
 
     # filter and fetch provided
-    f = FilterTables(database='db', filter_fn=__filter_tmp_tables, fetch_tables=True)
+    f = FilterTables(database="db", filter_fn=__filter_tmp_tables, fetch_tables=True)
     f_tables = f.execute()
     assert f_tables == filtered_tables
     print(f_tables)
 
     h1 = f.get_hook()
     h2 = f.get_hook()
-    assert (hex(id(h1)) == hex(id(h2)))
-    print(f'{hex(id(h1)), hex(id(h2))}')
+    assert hex(id(h1)) == hex(id(h2))
+    print(f"{hex(id(h1)), hex(id(h2))}")

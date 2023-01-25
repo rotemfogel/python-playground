@@ -15,14 +15,16 @@ class EverFlowRecord:
 
     @classmethod
     def from_list(cls, record: List[Any]):
-        return EverFlowRecord(subscription_name=record[0],
-                              user_id=record[1],
-                              product=record[2],
-                              subscription_type=record[3],
-                              rate_plan=record[4],
-                              attribution_affid=record[5],
-                              attribution_oid=record[6],
-                              attribution_transaction=record[7])
+        return EverFlowRecord(
+            subscription_name=record[0],
+            user_id=record[1],
+            product=record[2],
+            subscription_type=record[3],
+            rate_plan=record[4],
+            attribution_affid=record[5],
+            attribution_oid=record[6],
+            attribution_transaction=record[7],
+        )
 
 
 def to_everflow_record(records: List[Any]) -> List[EverFlowRecord]:

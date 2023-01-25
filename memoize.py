@@ -24,9 +24,9 @@ def fibonacci(n):
 
 if __name__ == "__main__":
     memoized_fibonacci = memoize(fibonacci)
-    print(timeit.timeit('fibonacci(35)', globals=globals(), number=1))
-    print(timeit.timeit('fibonacci(35)', globals=globals(), number=1))
-    print(timeit.timeit('fibonacci(35)', globals=globals(), number=1))
-    print(timeit.timeit('memoized_fibonacci(35)', globals=globals(), number=1))
-    print(timeit.timeit('memoized_fibonacci(35)', globals=globals(), number=1))
-    print(timeit.timeit('memoized_fibonacci(35)', globals=globals(), number=1))
+    print(timeit.timeit("fibonacci(35)", globals=globals(), number=1))
+    print(timeit.timeit("fibonacci(35)", globals=globals(), number=1))
+    print(timeit.timeit("fibonacci(35)", globals=globals(), number=1))
+    print(timeit.timeit("memoized_fibonacci(35)", globals=globals(), number=1))
+    print(timeit.timeit("memoized_fibonacci(35)", globals=globals(), number=1))
+    print(timeit.timeit("memoized_fibonacci(35)", globals=globals(), number=1))

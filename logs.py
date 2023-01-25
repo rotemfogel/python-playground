@@ -4,10 +4,12 @@ from random import seed
 
 import boto3
 
-namespace = 'Airflow'
-env = 'staging'
+namespace = "Airflow"
+env = "staging"
 
-client = boto3.Session(profile_name='sa-bi', region_name='us-west-2').client('cloudwatch')
+client = boto3.Session(profile_name="sa-bi", region_name="us-west-2").client(
+    "cloudwatch"
+)
 seed(1)
 
 
@@ -17,17 +19,14 @@ def report_every_5_sec():
         Namespace=namespace,
         MetricData=[
             {
-                'MetricName': 'heartbeat',
-                'Dimensions': [
-                    {
-                        'Name': 'env',
-                        'Value': env
-                    },
+                "MetricName": "heartbeat",
+                "Dimensions": [
+                    {"Name": "env", "Value": env},
                 ],
-                'Unit': 'None',
-                'Value': randint(1, 5)
+                "Unit": "None",
+                "Value": randint(1, 5),
             },
-        ]
+        ],
     )
     print(response)
 

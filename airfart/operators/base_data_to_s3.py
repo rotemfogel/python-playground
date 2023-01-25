@@ -31,25 +31,29 @@ class BaseDataToS3Operator(LoggingMixin, ABC):
     :type execution_timeout: datetime.timedelta
 
     """
+
     __ALLOWED_FORMATS = [OutputFormat.JSON, OutputFormat.PARQUET, OutputFormat.CSV]
     log = LoggingMixin.log
 
-    def __init__(self,
-                 *,
-                 sql: str,
-                 bucket: str,
-                 database: str,
-                 file_name: str,
-                 db_conn_id: Optional[str] = None,
-                 post_db_path: Optional[str] = None,
-                 output_format: str = OutputFormat.JSON,
-                 include_csv_headers: bool = True,
-                 records_transform_fn: callable = None,
-                 execution_timeout: timedelta = timedelta(minutes=5),
-                 **kwargs):
+    def __init__(
+        self,
+        *,
+        sql: str,
+        bucket: str,
+        database: str,
+        file_name: str,
+        db_conn_id: Optional[str] = None,
+        post_db_path: Optional[str] = None,
+        output_format: str = OutputFormat.JSON,
+        include_csv_headers: bool = True,
+        records_transform_fn: callable = None,
+        execution_timeout: timedelta = timedelta(minutes=5),
+        **kwargs,
+    ):
         super().__init__()
-        assert output_format in self.__ALLOWED_FORMATS, \
-            f'output_format should be either {OutputFormat.JSON}, {OutputFormat.PARQUET} or {OutputFormat.CSV}! '
+        assert (
+            output_format in self.__ALLOWED_FORMATS
+        ), f"output_format should be either {OutputFormat.JSON}, {OutputFormat.PARQUET} or {OutputFormat.CSV}! "
 
         self.sql = sql
         self.bucket = bucket
@@ -81,19 +85,27 @@ class BaseDataToS3Operator(LoggingMixin, ABC):
 
     def execute(self):
         # Generate write destination
-        path_components = ['s3:/', self.bucket, self.database, self.post_db_path, self.file_name]
-        path_components = [p_c for p_c in path_components if p_c]  # removing None segments
+        path_components = [
+            "s3:/",
+            self.bucket,
+            self.database,
+            self.post_db_path,
+            self.file_name,
+        ]
+        path_components = [
+            p_c for p_c in path_components if p_c
+        ]  # removing None segments
         if self.output_format == OutputFormat.JSON:
-            suffix = '.json.gz'
+            suffix = ".json.gz"
         elif self.output_format == OutputFormat.CSV:
-            suffix = '.csv'
+            suffix = ".csv"
         else:  # OutputFormat.PARQUET
-            suffix = '.parquet'
-        uri = '/'.join(path_components) + suffix
+            suffix = ".parquet"
+        uri = "/".join(path_components) + suffix
         self.log.debug(f"\nGenerated destination: {uri}\n")
 
         # Query logging
-        self.log.debug('\nExecuting the following query: %s\n', self.sql)
+        self.log.debug("\nExecuting the following query: %s\n", self.sql)
 
         df = self.get_pandas_df()
 
@@ -101,24 +113,37 @@ class BaseDataToS3Operator(LoggingMixin, ABC):
             if self.output_format == OutputFormat.PARQUET:
                 if self.records_transform_fn:
                     df = self.records_transform_fn(df)
-                df.to_parquet(uri, engine='pyarrow', allow_truncated_timestamps=True)
+                df.to_parquet(uri, engine="pyarrow", allow_truncated_timestamps=True)
             else:
                 if self.output_format == OutputFormat.JSON:
-                    columns = df.select_dtypes(include=['datetime64']).columns
+                    columns = df.select_dtypes(include=["datetime64"]).columns
                     for column in columns:
                         df[column] = df[column].astype(str)
                     records = df.to_dict(orient="records")
                 else:  # self.CSV
-                    records = df.to_csv(index=False, header=self.include_csv_headers).split("\n")
+                    records = df.to_csv(
+                        index=False, header=self.include_csv_headers
+                    ).split("\n")
 
                 # Copy to S3
-                self.log.info(f'about to write to file {uri}')
-                with smart_open.smart_open(uri, 'wb') as s3_file:
+                self.log.info(f"about to write to file {uri}")
+                with smart_open.smart_open(uri, "wb") as s3_file:
                     for record in records:
                         if not record:
                             continue
-                        record_to_write = self.records_transform_fn(record) if self.records_transform_fn else record
-                        s3_file.write((json.dumps(record_to_write, default=lambda o: o.__dict__) + '\n').encode('utf8'))
+                        record_to_write = (
+                            self.records_transform_fn(record)
+                            if self.records_transform_fn
+                            else record
+                        )
+                        s3_file.write(
+                            (
+                                json.dumps(
+                                    record_to_write, default=lambda o: o.__dict__
+                                )
+                                + "\n"
+                            ).encode("utf8")
+                        )
         else:
-            self.log.warn('No data found')
-        self.log.info('All done')
+            self.log.warn("No data found")
+        self.log.info("All done")

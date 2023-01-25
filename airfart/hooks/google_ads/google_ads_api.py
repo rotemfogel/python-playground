@@ -17,43 +17,49 @@ load_dotenv()
 
 class GoogleAdsApiHook(BaseHook):
     __ALLOWED_API_TYPES = [GoogleAdsApiType.Search, GoogleAdsApiType.SearchStream]
-    __GOOGLE_ADS_API_VERSION = 'v10'
+    __GOOGLE_ADS_API_VERSION = "v10"
 
-    __SEARCH_GOOGLE_ADS_SERVICE = 'SearchGoogleAdsRequest'
-    __STREAM_GOOGLE_ADS_SERVICE = 'GoogleAdsService'
+    __SEARCH_GOOGLE_ADS_SERVICE = "SearchGoogleAdsRequest"
+    __STREAM_GOOGLE_ADS_SERVICE = "GoogleAdsService"
 
-    def __init__(self,
-                 api_type: GoogleAdsApiType,
-                 account_id: str,
-                 logging_level: int = logging.INFO) -> None:
+    def __init__(
+        self,
+        api_type: GoogleAdsApiType,
+        account_id: str,
+        logging_level: int = logging.INFO,
+    ) -> None:
         super().__init__()
         if api_type not in self.__ALLOWED_API_TYPES:
-            raise AirflowException(f'Unknown GoogleAdsApiType: {api_type}')
+            raise AirflowException(f"Unknown GoogleAdsApiType: {api_type}")
         self.api_type = api_type
         self.account_id = account_id
         self.__client = None
         self.__search_service = None
         self.__stream_service = None
         # noinspection SpellCheckingInspection
-        logging.basicConfig(level=logging.INFO, format='[%(asctime)s - %(levelname)s] %(message).5000s')
-        logging.getLogger('google.ads.googleads.client').setLevel(logging_level)
+        logging.basicConfig(
+            level=logging.INFO, format="[%(asctime)s - %(levelname)s] %(message).5000s"
+        )
+        logging.getLogger("google.ads.googleads.client").setLevel(logging_level)
 
     def get_conn(self):
         if self.__client is None:
-            credentials = json.loads(os.getenv('google_ads_credentials'))
+            credentials = json.loads(os.getenv("google_ads_credentials"))
             self.__client = GoogleAdsClient.load_from_dict(credentials, version="v11")
         return self.__client
 
     def _get_search_service(self):
         if not self.__search_service:
-            self.__search_service = self.get_conn().get_service(self.__SEARCH_GOOGLE_ADS_SERVICE,
-                                                                version=self.__GOOGLE_ADS_API_VERSION)
+            self.__search_service = self.get_conn().get_service(
+                self.__SEARCH_GOOGLE_ADS_SERVICE, version=self.__GOOGLE_ADS_API_VERSION
+            )
         return self.__search_service
 
     def _get_stream_service(self):
         if not self.__stream_service:
-            self.__stream_service = self.get_conn().get_service(self.__STREAM_GOOGLE_ADS_SERVICE,
-                                                                version=self.__GOOGLE_ADS_API_VERSION)
+            self.__stream_service = self.get_conn().get_service(
+                self.__STREAM_GOOGLE_ADS_SERVICE, version=self.__GOOGLE_ADS_API_VERSION
+            )
         return self.__stream_service
 
     def _search(self, sql) -> Optional[list]:
@@ -76,7 +82,9 @@ class GoogleAdsApiHook(BaseHook):
         """
         stream api
         """
-        stream_result = self._get_stream_service().search_stream(customer_id=self.account_id, query=sql)
+        stream_result = self._get_stream_service().search_stream(
+            customer_id=self.account_id, query=sql
+        )
         results = []
         for batch in stream_result:
             for row in batch.results:

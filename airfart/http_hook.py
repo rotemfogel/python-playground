@@ -16,11 +16,7 @@ class HttpHook(BaseHttpHook):
     :type method: str
     """
 
-    def __init__(
-            self,
-            method='POST',
-            http_conn_id='http_default'
-    ) -> None:
+    def __init__(self, method="POST", http_conn_id="http_default") -> None:
         super().__init__()
         self.http_conn_id = http_conn_id
         self.method = method.upper()
@@ -56,13 +52,15 @@ class HttpHook(BaseHttpHook):
                 try:
                     session.headers.update(conn.extra)
                 except TypeError:
-                    print('Connection to %s has invalid extra field.' % conn.host)
+                    print("Connection to %s has invalid extra field." % conn.host)
         if headers:
             session.headers.update(headers)
 
         return session
 
-    def run(self, endpoint, data=None, headers=None, extra_options=None, **request_kwargs):
+    def run(
+        self, endpoint, data=None, headers=None, extra_options=None, **request_kwargs
+    ):
         r"""
         Performs the request
 
@@ -83,33 +81,30 @@ class HttpHook(BaseHttpHook):
 
         session = self.get_conn(headers)
 
-        if self.base_url and not self.base_url.endswith('/') and \
-                endpoint and not endpoint.startswith('/'):
-            url = self.base_url + '/' + endpoint
+        if (
+            self.base_url
+            and not self.base_url.endswith("/")
+            and endpoint
+            and not endpoint.startswith("/")
+        ):
+            url = self.base_url + "/" + endpoint
         else:
-            url = (self.base_url or '') + (endpoint or '')
+            url = (self.base_url or "") + (endpoint or "")
 
         req = None
-        if self.method == 'GET':
+        if self.method == "GET":
             # GET uses params
-            req = requests.Request(self.method,
-                                   url,
-                                   params=data,
-                                   headers=headers,
-                                   **request_kwargs)
-        elif self.method == 'HEAD':
+            req = requests.Request(
+                self.method, url, params=data, headers=headers, **request_kwargs
+            )
+        elif self.method == "HEAD":
             # HEAD doesn't use params
-            req = requests.Request(self.method,
-                                   url,
-                                   headers=headers,
-                                   **request_kwargs)
+            req = requests.Request(self.method, url, headers=headers, **request_kwargs)
         else:
             # Others use data
-            req = requests.Request(self.method,
-                                   url,
-                                   data=data,
-                                   headers=headers,
-                                   **request_kwargs)
+            req = requests.Request(
+                self.method, url, data=data, headers=headers, **request_kwargs
+            )
 
         prepped_request = session.prepare_request(req)
         print("Sending '%s' to url: %s" % (self.method, url))
@@ -154,14 +149,15 @@ class HttpHook(BaseHttpHook):
                 proxies=extra_options.get("proxies", {}),
                 cert=extra_options.get("cert"),
                 timeout=extra_options.get("timeout"),
-                allow_redirects=extra_options.get("allow_redirects", True))
+                allow_redirects=extra_options.get("allow_redirects", True),
+            )
 
-            if extra_options.get('check_response', True):
+            if extra_options.get("check_response", True):
                 self.check_response(response)
             return response
 
         except requests.exceptions.ConnectionError as ex:
-            print(str(ex) + ' Tenacity will retry to execute the operation')
+            print(str(ex) + " Tenacity will retry to execute the operation")
             raise ex
 
     def run_with_advanced_retry(self, _retry_args, *args, **kwargs):
@@ -189,8 +185,6 @@ class HttpHook(BaseHttpHook):
                  )
 
         """
-        self._retry_obj = tenacity.Retrying(
-            **_retry_args
-        )
+        self._retry_obj = tenacity.Retrying(**_retry_args)
 
         return self._retry_obj(self.run, *args, **kwargs)

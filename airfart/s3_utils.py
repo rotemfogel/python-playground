@@ -6,11 +6,12 @@ import smart_open
 
 def get_last_execution(bucket: str, prefix: str, key: str = None) -> str:
     rows = []
-    with smart_open.smart_open(f's3://{bucket}/{prefix}/last_execution',
-                               'r') as s3_file:
+    with smart_open.smart_open(
+        f"s3://{bucket}/{prefix}/last_execution", "r"
+    ) as s3_file:
         for line in s3_file:
             rows.append(line)
-    contents = ''.join(rows)
+    contents = "".join(rows)
     if key:
         d: Dict[str, str] = json.loads(contents)
         return d[key]
@@ -32,5 +33,7 @@ def set_last_execution(bucket: str, prefix: str, key: str, value: str):
     data.update({key: value})
     json_data = json.dumps(data)
 
-    with smart_open.smart_open(f's3://{bucket}/{prefix}/last_execution', 'wb') as s3_file:
-        s3_file.write(json_data.encode('utf8'))
+    with smart_open.smart_open(
+        f"s3://{bucket}/{prefix}/last_execution", "wb"
+    ) as s3_file:
+        s3_file.write(json_data.encode("utf8"))

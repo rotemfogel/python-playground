@@ -12,7 +12,7 @@ if __name__ == "__main__":
     load_dotenv()
 
     queries = dict(
-        campaigns='''SELECT campaign.id,
+        campaigns="""SELECT campaign.id,
                             campaign.name,
                             campaign.status,
                             campaign.base_campaign,
@@ -37,8 +37,8 @@ if __name__ == "__main__":
                        FROM campaign
                       WHERE metrics.impressions > 1
                         AND segments.date = '{date}'
-                        AND campaign.status IN ('ENABLED', 'PAUSED')''',
-        ad_groups='''SELECT ad_group.id,
+                        AND campaign.status IN ('ENABLED', 'PAUSED')""",
+        ad_groups="""SELECT ad_group.id,
                             ad_group.name,
                             ad_group.status,
                             ad_group.campaign,
@@ -65,8 +65,8 @@ if __name__ == "__main__":
                             metrics.cross_device_conversions
                        FROM ad_group
                       WHERE metrics.impressions > 1
-                        AND segments.date = '{date}' ''',
-        geo='''SELECT geographic_view.country_criterion_id,
+                        AND segments.date = '{date}' """,
+        geo="""SELECT geographic_view.country_criterion_id,
                       geographic_view.resource_name,
                       geographic_view.location_type,
                       ad_group.id,
@@ -90,8 +90,8 @@ if __name__ == "__main__":
                  FROM geographic_view
                 WHERE metrics.impressions > 1
                   AND segments.date = '{date}'
-            ''',
-        keywords='''SELECT campaign.base_campaign,
+            """,
+        keywords="""SELECT campaign.base_campaign,
                            campaign.bidding_strategy,
                            campaign.id,
                            campaign.labels,
@@ -130,8 +130,8 @@ if __name__ == "__main__":
                       FROM keyword_view
                      WHERE metrics.impressions > 1
                        AND segments.date = '{date}'
-        ''',
-        landing_pages='''SELECT customer.id,
+        """,
+        landing_pages="""SELECT customer.id,
                                 campaign.base_campaign, 
                                 campaign.bidding_strategy, 
                                 campaign.final_url_suffix, 
@@ -162,8 +162,8 @@ if __name__ == "__main__":
                            FROM landing_page_view
                           WHERE metrics.impressions > 1
                             AND segments.date = '{date}'
-        ''',
-        gender='''SELECT gender_view.resource_name,
+        """,
+        gender="""SELECT gender_view.resource_name,
                          campaign.name,
                          campaign.id,
                          ad_group.id,
@@ -176,8 +176,8 @@ if __name__ == "__main__":
                     FROM gender_view
                    WHERE metrics.impressions > 1
                      AND segments.date = '{date}'
-               ''',
-        income_range='''SELECT campaign.id, 
+               """,
+        income_range="""SELECT campaign.id, 
                                campaign.name, 
                                ad_group.id, 
                                ad_group.name, 
@@ -191,10 +191,10 @@ if __name__ == "__main__":
                           FROM income_range_view
                          WHERE metrics.impressions > 1
                            AND segments.date = '{date}'
-    '''
+    """,
     )
 
-    accounts = json.loads(os.getenv('google_accounts'))
+    accounts = json.loads(os.getenv("google_accounts"))
 
     start: Date = pendulum.Date.today()  # pendulum.Date(2021, 5, 27)
     until: Date = start.add(days=1)
@@ -203,25 +203,29 @@ if __name__ == "__main__":
     diff = start.diff(until).in_days()
     dates = [start.add(days=i) for i in range(0, diff)]
 
-    tables = ['income_range']  # 'gender',
-    google_ads_db = 'googleads'
+    tables = ["income_range"]  # 'gender',
+    google_ads_db = "googleads"
 
     for table in tables:
         for dt in dates:
             for account_id in accounts:
-                date_str = dt.format('YYYY-MM-DD')
+                date_str = dt.format("YYYY-MM-DD")
                 try:
-                    print(f'getting [{table}] data for account [{account_id}] at [{date_str}]')
+                    print(
+                        f"getting [{table}] data for account [{account_id}] at [{date_str}]"
+                    )
                     operator = GoogleAdsApiOperator(
                         sql=queries[table].format(date=date_str),
-                        bucket='seekingalpha-data',
-                        database='dba',
+                        bucket="seekingalpha-data",
+                        database="dba",
                         table=table,
-                        post_db_path=f'rotem/{google_ads_db}/input/{table}/date_={date_str}/account_id={account_id}',
+                        post_db_path=f"rotem/{google_ads_db}/input/{table}/date_={date_str}/account_id={account_id}",
                         method=GoogleAdsApiType.SearchStream,
-                        account_id=account_id
+                        account_id=account_id,
                     )
                     operator.execute()
                 except Exception as e:
-                    print(f'error fetching {date_str} data for customer_id {account_id}')
+                    print(
+                        f"error fetching {date_str} data for customer_id {account_id}"
+                    )
                     raise e

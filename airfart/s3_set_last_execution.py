@@ -18,11 +18,7 @@ class S3SetLastExecutionOperator(LoggingMixin):
     :type value: str
     """
 
-    def __init__(self,
-                 bucket: str,
-                 prefix: str,
-                 key: str,
-                 value: str):
+    def __init__(self, bucket: str, prefix: str, key: str, value: str):
         super().__init__()
         self.bucket = bucket
         self.prefix = prefix

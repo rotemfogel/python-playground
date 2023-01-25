@@ -6,8 +6,8 @@ from airflow.models import Variable, Connection
 from airflow.models.crypto import get_fernet
 from smart_open import open
 
-env = 'Local'
-data_bucket = 'my_bucket'
+env = "Local"
+data_bucket = "my_bucket"
 fernet = get_fernet()
 
 
@@ -16,38 +16,46 @@ fernet = get_fernet()
 
 def _read_from_s3(uri: str) -> list:
     records = []
-    with open(uri=uri, mode='r') as s3_file:
+    with open(uri=uri, mode="r") as s3_file:
         for line in s3_file:
             records.append(str(line))
     return records
 
 
 def _restore_variables(execution_date: str) -> None:
-    uri = 's3://{bucket}/airflow-backup/{env}/date_={date}/{what}.json.gz'.format(bucket=data_bucket,
-                                                                                  env=env,
-                                                                                  date=execution_date,
-                                                                                  what='variables', )
+    uri = "s3://{bucket}/airflow-backup/{env}/date_={date}/{what}.json.gz".format(
+        bucket=data_bucket,
+        env=env,
+        date=execution_date,
+        what="variables",
+    )
 
     raw_variables = _read_from_s3(uri)
-    variables = json.loads(''.join(raw_variables))
+    variables = json.loads("".join(raw_variables))
     for k, v in variables.items():
         if not Variable.get(k):
             Variable.set(k, v)
 
-    print("Restored Airflow [{env}] {len} variables from S3 ({uri})".format(env=env, len=len(variables), uri=uri))
+    print(
+        "Restored Airflow [{env}] {len} variables from S3 ({uri})".format(
+            env=env, len=len(variables), uri=uri
+        )
+    )
 
 
 def _restore_connections(execution_date: str) -> None:
-    uri = 's3://{bucket}/airflow-backup/{env}/date_={date}/{what}.json.gz'.format(bucket=data_bucket,
-                                                                                  env=env,
-                                                                                  date=execution_date,
-                                                                                  what='connections', )
+    uri = "s3://{bucket}/airflow-backup/{env}/date_={date}/{what}.json.gz".format(
+        bucket=data_bucket,
+        env=env,
+        date=execution_date,
+        what="connections",
+    )
     raw_connections = _read_from_s3(uri)
-    connections = json.loads(''.join(raw_connections))
+    connections = json.loads("".join(raw_connections))
 
     restored: int = 0
     for connection in connections:
-        conn_id = connection['conn_id']
+        conn_id = connection["conn_id"]
         # conn = session.query(Connection).filter_by(conn_id=conn_id).first()
         # if conn:
         #     session.delete(conn)
@@ -55,56 +63,62 @@ def _restore_connections(execution_date: str) -> None:
 
         password: Optional[str] = None
         try:
-            if connection['password']:
-                password = fernet.decrypt(bytes(connection['password'], 'utf-8')).decode('utf-8')
+            if connection["password"]:
+                password = fernet.decrypt(
+                    bytes(connection["password"], "utf-8")
+                ).decode("utf-8")
         except KeyError:
             pass
         port: Optional[int] = None
         try:
-            port = connection['port']
+            port = connection["port"]
         except KeyError:
             pass
         host: Optional[str] = None
         try:
-            host = connection['host']
+            host = connection["host"]
         except KeyError:
             pass
         login: Optional[str] = None
         try:
-            login = connection['login']
+            login = connection["login"]
         except KeyError:
             pass
         schema: Optional[str] = None
         try:
-            schema = connection['schema']
+            schema = connection["schema"]
         except KeyError:
             pass
         extra: Optional[str] = None
         try:
-            extra = connection['extra']
+            extra = connection["extra"]
         except KeyError:
             pass
         uri: Optional[str] = None
         try:
-            uri = connection['uri']
+            uri = connection["uri"]
         except KeyError:
             pass
         conn2save = Connection(
             conn_id=conn_id,
-            conn_type=connection['conn_type'],
+            conn_type=connection["conn_type"],
             host=host,
             login=login,
             password=password,
             schema=schema,
             port=port,
             extra=extra,
-            uri=uri
+            uri=uri,
         )
         # session.merge(conn2save)
         # session.commit()
         restored += 1
     if restored > 0:
-        print("Restored Airflow [{env}] {len} connections from S3 ({uri})".format(env=env, len=restored, uri=uri))
+        print(
+            "Restored Airflow [{env}] {len} connections from S3 ({uri})".format(
+                env=env, len=restored, uri=uri
+            )
+        )
 
 
 exec_date = "2021-02-16"

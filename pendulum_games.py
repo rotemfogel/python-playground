@@ -14,15 +14,13 @@ def to_est(execution_date: DateTime, **args) -> DateTime:
     """
     est = execution_date.in_timezone("America/New_York")
     if args:
-        right_params = all(arg in ['days', 'hours'] for arg in args.keys())
+        right_params = all(arg in ["days", "hours"] for arg in args.keys())
         if right_params:
             est = est.subtract(**args)
     return est
 
 
-def ds_ny(execution_date: DateTime,
-          template: str = 'YYYY-MM-DD',
-          **args) -> str:
+def ds_ny(execution_date: DateTime, template: str = "YYYY-MM-DD", **args) -> str:
     """
     converts date to string, with timezone offset
     like the built-in macro `ds` only in EDT timezone
@@ -68,7 +66,9 @@ def daily_fn(execution_date):
     :return: DateTime
     """
     hour = execution_date.hour
-    closest_execution_date = execution_date.subtract(days=1).set(hour=5, minute=25, second=0, microsecond=0)
+    closest_execution_date = execution_date.subtract(days=1).set(
+        hour=5, minute=25, second=0, microsecond=0
+    )
     if hour < 5:
         return closest_execution_date.subtract(days=1)
     return closest_execution_date
@@ -143,8 +143,7 @@ def datetime_to_pendulum(dt: datetime) -> DateTime:
 _last_post_diff = 15
 
 
-def foo(execution_date: DateTime,
-        last_post_date: DateTime):
+def foo(execution_date: DateTime, last_post_date: DateTime):
     empty_slots = 0
     should_post = empty_slots == 0
     diff_passed = execution_date.subtract(minutes=_last_post_diff) >= last_post_date
@@ -174,7 +173,7 @@ for i in range(23):
     r = other_fn(p)
     print("{} -> {}".format(p, r))
 
-print(100 * '-')
+print(100 * "-")
 now = DateTime(year=2021, month=3, day=14, hour=2, minute=25)
 print(to_est(now, hours=1))
 print(to_est(now, hours=0))

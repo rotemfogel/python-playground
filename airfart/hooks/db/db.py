@@ -9,7 +9,6 @@ from airfart.model.db import DB, DBType
 
 
 class DBHook(ABC):
-
     def __init__(self, db: Optional[DB] = None):
         self.db = db
 
@@ -24,7 +23,7 @@ class DBHook(ABC):
             user=self.db.login,
             password=self.db.password,
             host=self.db.host,
-            port=self.db.port
+            port=self.db.port,
         )
         if self.db.db_type == DBType.MySQL:
             return MySQLdb.connect(**conn_args)

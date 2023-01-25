@@ -83,8 +83,10 @@ queries = [
     },
 ]
 max_batch_size = 5
-query_chunks = [queries[i * max_batch_size:(i + 1) * max_batch_size] for i in
-                range((len(queries) + max_batch_size - 1) // max_batch_size)]
+query_chunks = [
+    queries[i * max_batch_size : (i + 1) * max_batch_size]
+    for i in range((len(queries) + max_batch_size - 1) // max_batch_size)
+]
 length = len(query_chunks)
 for chunks in range(length):
     for query in query_chunks[chunks]:

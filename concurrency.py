@@ -19,7 +19,7 @@ async def load_contents() -> None:
         get_posts(),
         get_albums(),
     )
-    exec_time = (time.perf_counter() - start_time)
+    exec_time = time.perf_counter() - start_time
     print(f"Execution time: {exec_time:0.2f} seconds.")
 
 
@@ -27,7 +27,7 @@ async def load_contents_synchronous() -> None:
     start_time = time.perf_counter()
     await get_posts()
     await get_albums()
-    exec_time = (time.perf_counter() - start_time)
+    exec_time = time.perf_counter() - start_time
     print(f"Execution time: {exec_time:0.2f} seconds.")
 
 
@@ -38,7 +38,7 @@ async def load_contents_using_tasks(self) -> None:
     for content in content_types:
         tasks.append(getattr(self, f"get_{content}")())
     await asyncio.gather(*tasks)
-    exec_time = (time.perf_counter() - start_time)
+    exec_time = time.perf_counter() - start_time
     print(f"Execution time: {exec_time:0.2f} seconds.")
 
 
