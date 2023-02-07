@@ -5,7 +5,7 @@
 #
 # Use any database syntax you would like
 #
-#                          Table "public.customers"
+#                          Table "public.customer"
 #      Column     |          Type          | Collation | Nullable | Default
 # ----------------+------------------------+-----------+----------+---------
 #  id             | integer                |           | not null |
@@ -15,14 +15,15 @@
 #  postal_code    | character varying(16)  |           |          |
 #  city           | character varying(24)  |           |          |
 # Indexes:
-#     "customers_pkey" PRIMARY KEY, btree (id)3
+#     "customer_pkey" PRIMARY KEY, btree (id)
 #
 #
-# db=# select * from customers;
+# postgres=# select * from customer;
 #  id | first_name | last_name | street_address | postal_code |  city
 # ----+------------+-----------+----------------+-------------+--------
 #   1 | John       | Doe       | 1 Martin Place | 2000        | Sydney
-# (1 row)
+#   2 | Jane       | Doe       | 2 Martin Place | 2000        | Sydney
+# (2 rows)
 #
 ################################################################################
 import asyncio
@@ -39,10 +40,10 @@ async def get_customer_details(customer_id: int) -> Optional[Dict[str, Any]]:
         customer = await connection.fetchrow(
             """
             SELECT *
-              FROM customers
+              FROM customer
              WHERE id = $1
             """,
-            customer_id
+            customer_id,
         )
     except asyncpg.PostgresError:
         print("Failed to get customer data for customer_id %s" % customer_id)
@@ -91,10 +92,10 @@ async def memo_get_customer_details(customer_id: int) -> Optional[Customer]:
         customer = await connection.fetchrow(
             """
             SELECT *
-              FROM customers
+              FROM customer
              WHERE id = $1
             """,
-            customer_id
+            customer_id,
         )
     except asyncpg.PostgresError:
         print("Failed to get customer data for customer_id %s" % customer_id)
