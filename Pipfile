@@ -34,6 +34,7 @@ python-dotenv = "*"
 s3fs = "*"
 shapely = "*"
 smart-open = "*"
+asyncpg = "*"
 
 [dev-packages]
 flake8 = "*"

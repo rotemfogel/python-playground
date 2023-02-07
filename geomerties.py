@@ -5,15 +5,15 @@ from shapely import wkt, GEOSException
 
 def print_coordinate(place_id: str, coordinate: list) -> None:
     s = (
-            f"const {place_id} = ["
-            + ",".join(
-        list(map(lambda x: f"{{lat:{x[1]},lng:{x[0]}}}", coordinate))
+        f"const {place_id} = ["
+        + ",".join(list(map(lambda x: f"{{lat:{x[1]},lng:{x[0]}}}", coordinate)))
+        + "];\n"
     )
-            + "];\n"
+    s += (
+        f"const {place_id}_p = new google.maps.Polygon({{paths: {place_id}, strokeColor: "
+        f'"#FF0000", strokeOpacity: 0.8, strokeWeight: 3, fillColor: "#FF0000", fillOpacity: 0.35,}});\n'
+        f"{place_id}_p.setMap(map);"
     )
-    s += f'const {place_id}_p = new google.maps.Polygon({{paths: {place_id}, strokeColor: ' \
-         f'"#FF0000", strokeOpacity: 0.8, strokeWeight: 3, fillColor: "#FF0000", fillOpacity: 0.35,}});\n' \
-         f'{place_id}_p.setMap(map);'
     print(s)
 
 
@@ -28,7 +28,7 @@ def validate_polygon(coordinates: list) -> None:
 
 
 def main():
-    with open("GB.json", "r") as f:
+    with open("AU.json", "r") as f:
         geometries_raw = json.load(f)
         for entry in geometries_raw:
             place_id = entry["place_id"]
@@ -49,7 +49,7 @@ def main():
                 loop = True
             if loop:
                 for i, coordinate in enumerate(coordinates):
-                    print_coordinate(f'{place_id}_{i}', coordinate)
+                    print_coordinate(f"{place_id}_{i}", coordinate)
             else:
                 print_coordinate(place_id, coordinates)
 
