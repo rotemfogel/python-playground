@@ -35,6 +35,7 @@ s3fs = "*"
 shapely = "*"
 smart-open = "*"
 asyncpg = "*"
+pandas = "*"
 
 [dev-packages]
 flake8 = "*"
