@@ -178,7 +178,7 @@ async def memo_orm_get_customer(customer_id: int) -> Optional[Customer]:
 
 if __name__ == "__main__":
     arr = [1, 2]
-    for l in arr:
+    for _ in arr:
         for i in arr:
             result = asyncio.run(memo_get_customer_details(i))
             print(result)
