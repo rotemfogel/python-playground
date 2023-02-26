@@ -2,7 +2,7 @@ import json
 
 from airflow import AirflowException
 from airflow import settings
-from airflow.hooks.http_hook import HttpHook
+from airflow.providers.http.hooks.http import HttpHook
 from airflow.models import Variable, Connection
 
 projects = Variable.get("delighted", deserialize_json=True)
