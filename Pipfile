@@ -9,8 +9,8 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-# from Airflow constraint file [https://raw.githubusercontent.com/apache/airflow/constraints-2.5.1/constraints-3.10.txt]
-apache-airflow = "==2.5.1"
+# from Airflow constraint file [https://raw.githubusercontent.com/apache/airflow/constraints-2.5.3/constraints-3.10.txt]
+apache-airflow = "==2.5.3"
 apache-airflow-providers-amazon = "*"
 apache-airflow-providers-http = "*"
 apache-airflow-providers-imap = "*"
@@ -44,4 +44,4 @@ nose = "*"
 coverage = "*"
 
 [requires]
-python_version = "3.10"
+python_version = "3.11"
