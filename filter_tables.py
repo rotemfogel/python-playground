@@ -32,7 +32,6 @@ class FilterTables:
         return self.hook
 
     def execute(self) -> List[str]:
-
         if not self.tables_to_remove and self.fetch_tables:
             self.tables_to_remove = tables
 

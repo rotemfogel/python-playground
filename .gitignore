@@ -9,3 +9,5 @@
 .env
 *.json
 *.yaml
+*.parquet
+.DS_Store

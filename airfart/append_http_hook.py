@@ -27,7 +27,6 @@ class AppendHttpHook(BaseHttpHook):
         pass
 
     def run(self, endpoint: str = None, data: dict = None, headers: dict = None):
-
         if data:
             if self._extra_options:
                 for k, v in data.items():
