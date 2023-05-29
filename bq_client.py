@@ -10,24 +10,24 @@ from google.cloud import bigquery
 from google.oauth2 import service_account
 
 load_dotenv()
-SOURCE_COLUMN = os.getenv("SOURCE_COLUMN")
-VIEW_COLUMN = os.getenv("VIEW_COLUMN")
-PROD_ANALYTICS_PROJECT_NAME = os.getenv("PROD_ANALYTICS_PROJECT_NAME")
-SNOWPLOW_PROJECT_NAME = os.getenv("SNOWPLOW_PROJECT_NAME")
-PROJECT_NAME = os.getenv("GOOGLE_CLOUD_BIGQUERY_PROJECT_ID")
-BIGQUERY_CLIENT_EMAIL = os.getenv("GOOGLE_CLOUD_BIGQUERY_CLIENT_EMAIL")
-BIGQUERY_CLIENT_SECRET = os.getenv("GOOGLE_CLOUD_BIGQUERY_CLIENT_SECRET")
-GOOGLE_CREDENTIALS = None
-GOOGLE_CREDENTIALS = service_account.Credentials.from_service_account_info(
+__SOURCE_COLUMN = os.getenv("SOURCE_COLUMN")
+__VIEW_COLUMN = os.getenv("VIEW_COLUMN")
+__PROD_ANALYTICS_PROJECT_NAME = os.getenv("PROD_ANALYTICS_PROJECT_NAME")
+__SNOWPLOW_PROJECT_NAME = os.getenv("SNOWPLOW_PROJECT_NAME")
+__PROJECT_NAME = os.getenv("GOOGLE_CLOUD_BIGQUERY_PROJECT_ID")
+__BIGQUERY_CLIENT_EMAIL = os.getenv("GOOGLE_CLOUD_BIGQUERY_CLIENT_EMAIL")
+__BIGQUERY_CLIENT_SECRET = os.getenv("GOOGLE_CLOUD_BIGQUERY_CLIENT_SECRET")
+__GOOGLE_CREDENTIALS = service_account.Credentials.from_service_account_info(
     {
         "type": "service_account",
-        "project_id": PROJECT_NAME,
-        "private_key": BIGQUERY_CLIENT_SECRET.replace("\\n", "\n"),
-        "client_email": BIGQUERY_CLIENT_EMAIL,
+        "project_id": __PROJECT_NAME,
+        "private_key": __BIGQUERY_CLIENT_SECRET.replace("\\n", "\n"),
+        "client_email": __BIGQUERY_CLIENT_EMAIL,
         "auth_uri": "https://accounts.google.com/o/oauth2/auth",
         "token_uri": "https://accounts.google.com/o/oauth2/token",
     },
 )
+__BIGQUERY_CLIENT = bigquery.Client(credentials=__GOOGLE_CREDENTIALS, project=__PROJECT_NAME)
 
 ABANDONED_CART_VIEWS = f"""
 WITH sessions AS (
@@ -43,11 +43,11 @@ WITH sessions AS (
               THEN 'booking'
           END event_type,
           JSON_VALUE(pv.path_params, '$.offerId') AS offer_bk
-    FROM `{SNOWPLOW_PROJECT_NAME}`.snowplow.events e 
-    JOIN UNNEST({VIEW_COLUMN}) pv
+    FROM `{__SNOWPLOW_PROJECT_NAME}`.snowplow.events e 
+    JOIN UNNEST({__VIEW_COLUMN}) pv
    WHERE derived_tstamp >= TIMESTAMP(@start_date) 
      AND derived_tstamp <  TIMESTAMP(@end_date)
-     AND {VIEW_COLUMN} IS NOT NULL
+     AND {__VIEW_COLUMN} IS NOT NULL
      AND (   CONTAINS_SUBSTR(pv.path_template, 'checkout') 
           OR CONTAINS_SUBSTR(pv.path_template, 'offerId')
           OR CONTAINS_SUBSTR(pv.path_template, 'booking'))
@@ -70,11 +70,11 @@ abandoned_views AS (
          offer_bk,
          c.customer_salesforce_contact_bk AS subscriber_key
     FROM candidate_events ce
-    JOIN `{SNOWPLOW_PROJECT_NAME}`.snowplow.events e
+    JOIN `{__SNOWPLOW_PROJECT_NAME}`.snowplow.events e
       ON (   ce.customer_bk = e.user_id
           AND ce.derived_tstamp = e.derived_tstamp
           AND ce.domain_sessionid = e.domain_sessionid)
-    JOIN `{PROD_ANALYTICS_PROJECT_NAME}`.datawarehouse.dim_customer c 
+    JOIN `{__PROD_ANALYTICS_PROJECT_NAME}`.datawarehouse.dim_customer c 
    USING (customer_bk)
    WHERE e.derived_tstamp >= TIMESTAMP(@start_date) 
      AND e.derived_tstamp <  TIMESTAMP(@end_date)
@@ -89,37 +89,37 @@ SELECT av.*,
        offer_end_date,
        holiday_types
   FROM abandoned_views av
-  LEFT JOIN `{PROJECT_NAME}`.recommendation_service_prod.combined_offers co
+  LEFT JOIN `{__PROJECT_NAME}`.recommendation_service_prod.combined_offers co
     ON (av.offer_bk = co.offer_id)
 """
 
 HEAP_ABANDONED_CARTS = f"""
 WITH sessions AS (
-   SELECT time, 
-          user_id, 
-          session_id, 
-          CASE ARRAY_LENGTH(array_reverse(split(path, '/')))
-            WHEN 6 THEN array_reverse(split(path, '/'))[offset(1)]
-            ELSE array_reverse(split(path, '/'))[offset(0)]
-          END AS offer_bk,
-          CASE
-            WHEN CONTAINS_SUBSTR(path, 'checkout')
-              THEN 'checkout'
-            WHEN CONTAINS_SUBSTR(path, 'offer') OR CONTAINS_SUBSTR(path, 'partner')
-              THEN 'page_view'
-            WHEN CONTAINS_SUBSTR(path, 'booking')
-              THEN 'booking'
-          END event_type,
-     FROM `{PROJECT_NAME}`.heap_migrated.all_events
-    WHERE event_view_name = 'pageviews'
-      AND time >= TIMESTAMP(@start_date) 
-      AND time <  TIMESTAMP(@end_date)
-      AND (   CONTAINS_SUBSTR(path, 'checkout') 
-           OR CONTAINS_SUBSTR(path, 'offer')
-           OR CONTAINS_SUBSTR(path, 'partner')
-           OR CONTAINS_SUBSTR(path, 'booking')) 
-      AND session_id IS NOT NULL
-      AND user_id IS NOT NULL
+  SELECT time, 
+         user_id, 
+         session_id, 
+         CASE ARRAY_LENGTH(array_reverse(split(path, '/')))
+           WHEN 6 THEN array_reverse(split(path, '/'))[offset(1)]
+           ELSE array_reverse(split(path, '/'))[offset(0)]
+         END AS offer_bk,
+         CASE
+           WHEN CONTAINS_SUBSTR(path, 'checkout')
+             THEN 'checkout'
+           WHEN CONTAINS_SUBSTR(path, 'offer') OR CONTAINS_SUBSTR(path, 'partner')
+             THEN 'page_view'
+           WHEN CONTAINS_SUBSTR(path, 'booking')
+             THEN 'booking'
+         END event_type,
+    FROM `{__PROJECT_NAME}`.heap_migrated.all_events
+   WHERE event_view_name = 'pageviews'
+     AND time >= TIMESTAMP(@start_date) 
+     AND time <  TIMESTAMP(@end_date)
+     AND (   CONTAINS_SUBSTR(path, 'checkout') 
+          OR CONTAINS_SUBSTR(path, 'offer')
+          OR CONTAINS_SUBSTR(path, 'partner')
+          OR CONTAINS_SUBSTR(path, 'booking')) 
+     AND session_id IS NOT NULL
+     AND user_id IS NOT NULL
 ),
 candidate_events AS (
   SELECT time,
@@ -137,13 +137,13 @@ abandoned_views AS (
          offer_bk,
          c.customer_salesforce_contact_bk          AS subscriber_key
     FROM candidate_events ce
-    JOIN `{PROJECT_NAME}`.heap_migrated.all_events e
+    JOIN `{__PROJECT_NAME}`.heap_migrated.all_events e
       ON (    ce.user_id = e.user_id
           AND ce.time = e.time
           AND ce.session_id = e.session_id)
-    JOIN `{PROJECT_NAME}`.heap_migrated.users u
+    JOIN `{__PROJECT_NAME}`.heap_migrated.users u
       ON (u.user_id = e.user_id)
-    LEFT JOiN `{PROD_ANALYTICS_PROJECT_NAME}`.datawarehouse.dim_customer c 
+    LEFT JOiN `{__PROD_ANALYTICS_PROJECT_NAME}`.datawarehouse.dim_customer c 
       ON (u.identity = c.customer_bk)
    WHERE e.time >= TIMESTAMP(@start_date) 
      AND e.time <  TIMESTAMP(@end_date)
@@ -158,7 +158,7 @@ SELECT av.*,
        offer_end_date,
        holiday_types
   FROM abandoned_views av
-  LEFT JOIN `{PROJECT_NAME}`.recommendation_service_prod.combined_offers co
+  LEFT JOIN `{__PROJECT_NAME}`.recommendation_service_prod.combined_offers co
     ON (av.offer_bk = co.offer_id)"""
 
 
@@ -172,7 +172,7 @@ class ConfigurationItem:
 
 def _get_bq_client():
     """Create a big query client for root project"""
-    return bigquery.Client(credentials=GOOGLE_CREDENTIALS, project=PROJECT_NAME)
+    return __BIGQUERY_CLIENT
 
 
 def _get_file_name(prefix: str, start_date: datetime) -> str:
