@@ -38,6 +38,7 @@ asyncpg = "*"
 pandas = "*"
 google-cloud-bigquery = {version = "==3.10.0", extras = ["pandas"]}
 loguru = "*"
+redis = "*"
 
 [dev-packages]
 flake8 = "*"
