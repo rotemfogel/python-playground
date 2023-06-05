@@ -39,6 +39,7 @@ pandas = "*"
 google-cloud-bigquery = {version = "==3.10.0", extras = ["pandas"]}
 loguru = "*"
 redis = "*"
+pyyaml = "*"
 
 [dev-packages]
 flake8 = "*"

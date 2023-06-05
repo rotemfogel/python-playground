@@ -11,3 +11,5 @@
 *.yaml
 *.parquet
 .DS_Store
+*.yml
+*.pkl

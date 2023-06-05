@@ -1,10 +1,12 @@
 import json
 import os
 import pickle
+from pprint import pprint
 from typing import List, Any, Optional, Set
 from urllib.parse import urlparse
 
 import redis
+import yaml
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -69,13 +71,38 @@ def cache_set_lookup(key: str, value: Any) -> bool:
     return value in cache_set_get(key)
 
 
-if __name__ == '__main__':
-    cache_keys = cache_keys()
-    key_sizes = list(map(lambda x: {len(x): x}, cache_keys))
-    # for cache_key in cache_keys:
-    #     lk = len(cache_key)
-    #     count = key_sizes.get(lk, 0) + 1
-    #     key_sizes.update({lk: count})
+def get_cache_keys() -> List[str]:
+    file = 'cache_keys.pkl'
+    try:
+        with open(file, 'rb') as r:
+            keys = pickle.load(r)
+    except IOError:
+        keys = cache_keys()
+        with open(file, 'wb') as w:
+            pickle.dump(keys, w)
+    return keys
 
-    from pprint import pprint
-    print(json.dumps(key_sizes, indent=1))
+
+if __name__ == '__main__':
+    key_sizes_file = 'key_sizes.yml'
+    cache_keys = get_cache_keys()
+    cache_key_sizes = list(map(lambda x: {len(x): x}, cache_keys))
+    key_sizes = {}
+    with open(key_sizes_file, 'r') as f:
+        key_sizes = yaml.safe_load(f)
+    if not key_sizes:
+        key_sizes = {}
+        for cache_key in cache_key_sizes:
+            key_size = list(cache_key.keys())[0]
+            count = key_sizes.get(key_size, 0) + 1
+            key_sizes.update({key_size: count})
+        with open(key_sizes_file, 'w') as f:
+            yaml.safe_dump(key_sizes, f)
+    large_keys_sz = list(filter(lambda k: k > 5000, key_sizes.keys()))
+    large_keys = []
+    for k_sz in large_keys_sz:
+        for i in cache_key_sizes:
+            if list(i.keys())[0] == k_sz:
+                large_keys.append(i[k_sz])
+    with open('large_keys.json', 'w') as f:
+        json.dump(large_keys, f, indent=1)
