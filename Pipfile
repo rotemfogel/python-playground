@@ -36,7 +36,7 @@ shapely = "*"
 smart-open = "*"
 asyncpg = "*"
 pandas = "*"
-google-cloud-bigquery = {version = "==3.10.0", extras = ["pandas"]}
+google-cloud-bigquery = {version = "==3.11.0", extras = ["pandas"]}
 loguru = "*"
 redis = "*"
 pyyaml = "*"
@@ -46,6 +46,8 @@ flake8 = "*"
 pylint = "*"
 nose = "*"
 coverage = "*"
+pyright = "*"
+black = "*"
 
 [requires]
 python_version = "3.11"

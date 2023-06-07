@@ -1,5 +1,7 @@
 import boto3
 
+from airfart.utils.chunk import chunk_fn
+
 _glue_hook = boto3.Session(profile_name="default", region_name="us-west-2").client(
     "glue"
 )
@@ -59,10 +61,7 @@ def _clear_table(db: str, table: str) -> None:
     versions = sorted(list(map(lambda x: int(x), _get_versions(db, table))))
     if len(versions) > chunk_size:
         versions_to_drop = versions[:-chunk_size]
-        version_chunks = [
-            versions_to_drop[i * chunk_size : (i + 1) * chunk_size]
-            for i in range((len(versions_to_drop) + chunk_size - 1) // chunk_size)
-        ]
+        version_chunks = chunk_fn(versions_to_drop, chunk_size)
         for chunk in version_chunks:
             if not _dry_run:
                 _glue_hook.batch_delete_table_version(

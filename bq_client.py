@@ -27,7 +27,9 @@ __GOOGLE_CREDENTIALS = service_account.Credentials.from_service_account_info(
         "token_uri": "https://accounts.google.com/o/oauth2/token",
     },
 )
-__BIGQUERY_CLIENT = bigquery.Client(credentials=__GOOGLE_CREDENTIALS, project=__PROJECT_NAME)
+__BIGQUERY_CLIENT = bigquery.Client(
+    credentials=__GOOGLE_CREDENTIALS, project=__PROJECT_NAME
+)
 
 ABANDONED_CART_VIEWS = f"""
 WITH sessions AS (
@@ -180,7 +182,7 @@ def _get_file_name(prefix: str, start_date: datetime) -> str:
 
 
 def _get_data(
-        start_date: datetime, end_date: datetime, query: str, prefix: str
+    start_date: datetime, end_date: datetime, query: str, prefix: str
 ) -> None:
     start_time = start_date.strftime("%Y-%m-%d %H:%M:%S")
     end_time = end_date.strftime("%Y-%m-%d %H:%M:%S")

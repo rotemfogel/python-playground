@@ -5,6 +5,7 @@ import boto3
 from airflow.utils.log.logging_mixin import LoggingMixin
 
 from airfart.model.table_definitions import TableDef
+from airfart.utils.chunk import chunk_fn
 
 
 class GlueCatalogHook(LoggingMixin):
@@ -12,13 +13,6 @@ class GlueCatalogHook(LoggingMixin):
         self.region = region
         session = boto3.session.Session(region_name=self.region)
         self._client = session.client("glue")
-
-    def __chunk(self, what: List[object]) -> List[List[object]]:
-        # create chunks of 100 from a list
-        return [
-            what[i * self._chunk_size : (i + 1) * self._chunk_size]
-            for i in range((len(what) + self._chunk_size - 1) // self._chunk_size)
-        ]
 
     def _paginate(
         self, operation: str, page_key: str, value_key: Optional[str] = None, **kwargs
@@ -86,7 +80,7 @@ class GlueCatalogHook(LoggingMixin):
 
     def delete_tables(self, db: str, tables_to_remove: List[str]) -> None:
         # create chunks of 100 tables to drop
-        table_chunks = self.__chunk(tables_to_remove)
+        table_chunks = chunk_fn(tables_to_remove, self._chunk_size)
         for chunk in table_chunks:
             self.get_conn().batch_delete_table(
                 DatabaseName=db, TablesToDelete=list(map(lambda x: str(x), chunk))
@@ -101,7 +95,7 @@ class GlueCatalogHook(LoggingMixin):
         if len(versions) > self._chunk_size:
             versions_to_drop = versions[: -self._chunk_size]
             # create chunks of 100 versionIds to drop
-            version_chunks = self.__chunk(versions_to_drop)
+            version_chunks = chunk_fn(versions_to_drop, self._chunk_size)
             for chunk in version_chunks:
                 self.get_conn().batch_delete_table_version(
                     DatabaseName=db,

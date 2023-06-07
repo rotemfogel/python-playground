@@ -1,6 +1,8 @@
 # List MariaDB table to dump to S3 with an indication to copy to Vertica
 from operator import itemgetter
 
+from airfart.utils.chunk import chunk_fn
+
 dump_tables = [
     ("additional_reg_infos", False),
     ("articles", False),
@@ -89,8 +91,7 @@ for table, vertica_ind in dump_tables:
 tables = sorted(tables, key=itemgetter("priority_weight"), reverse=True)
 
 # bucket to arrays
-n = len(priority_tables)
-table_chunks = [tables[i * n : (i + 1) * n] for i in range((len(tables) + n - 1) // n)]
+table_chunks = chunk_fn(tables, len(priority_tables))
 
 length = len(table_chunks)
 global_tasks = []

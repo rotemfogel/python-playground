@@ -12,6 +12,8 @@ from airflow.utils.log.logging_mixin import LoggingMixin
 from dotenv import load_dotenv
 from pendulum import DateTime
 
+from airfart.utils.chunk import chunk_fn
+
 
 class S3ListAndDeleteOperator(LoggingMixin):
     """
@@ -146,9 +148,7 @@ class S3ListAndDeleteOperator(LoggingMixin):
         return prefixes
 
     def chunk_delete_objects(self, bucket, keys, n=1000):
-        key_chunks = [
-            keys[i * n : (i + 1) * n] for i in range((len(keys) + n - 1) // n)
-        ]
+        key_chunks = chunk_fn(keys, n)
         for chunk in key_chunks:
             self.delete_objects(bucket=bucket, keys=chunk)
 
