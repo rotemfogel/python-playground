@@ -97,12 +97,12 @@ SELECT av.*,
 
 HEAP_ABANDONED_CARTS = f"""
 WITH sessions AS (
-  SELECT time, 
+  SELECT time,
          user_id, 
          session_id, 
-         CASE ARRAY_LENGTH(array_reverse(split(path, '/')))
-           WHEN 6 THEN array_reverse(split(path, '/'))[offset(1)]
-           ELSE array_reverse(split(path, '/'))[offset(0)]
+         CASE ARRAY_LENGTH(SPLIT(path, '/'))
+           WHEN 6 THEN ARRAY_REVERSE(SPLIT(path, '/'))[offset(1)]
+           ELSE ARRAY_REVERSE(SPLIT(path, '/'))[offset(0)]
          END AS offer_bk,
          CASE
            WHEN CONTAINS_SUBSTR(path, 'checkout')
@@ -145,7 +145,7 @@ abandoned_views AS (
           AND ce.session_id = e.session_id)
     JOIN `{__PROJECT_NAME}`.heap_migrated.users u
       ON (u.user_id = e.user_id)
-    LEFT JOiN `{__PROD_ANALYTICS_PROJECT_NAME}`.datawarehouse.dim_customer c 
+    LEFT JOIN `{__PROD_ANALYTICS_PROJECT_NAME}`.datawarehouse.dim_customer c 
       ON (u.identity = c.customer_bk)
    WHERE e.time >= TIMESTAMP(@start_date) 
      AND e.time <  TIMESTAMP(@end_date)
