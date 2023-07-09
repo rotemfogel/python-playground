@@ -10,7 +10,7 @@ name = "pypi"
 
 [packages]
 # from Airflow constraint file [https://raw.githubusercontent.com/apache/airflow/constraints-2.6.0/constraints-3.11.txt]
-apache-airflow = "==2.6.0"
+apache-airflow = "==2.6.2"
 apache-airflow-providers-amazon = "*"
 apache-airflow-providers-http = "*"
 apache-airflow-providers-imap = "*"
@@ -36,7 +36,7 @@ shapely = "*"
 smart-open = "*"
 asyncpg = "*"
 pandas = "*"
-google-cloud-bigquery = {version = "==3.11.0", extras = ["pandas"]}
+google-cloud-bigquery = {version = "==3.11.3", extras = ["pandas"]}
 loguru = "*"
 redis = "*"
 pyyaml = "*"
