@@ -1,0 +1,10 @@
+import os
+
+from dotenv import load_dotenv
+
+load_dotenv()
+SOURCE_COLUMN = os.getenv("SOURCE_COLUMN")
+VIEW_COLUMN = os.getenv("VIEW_COLUMN")
+PROD_ANALYTICS_PROJECT_NAME = os.getenv("PROD_ANALYTICS_PROJECT_NAME")
+SNOWPLOW_PROJECT_NAME = os.getenv("SNOWPLOW_PROJECT_NAME")
+PROJECT_NAME = os.getenv("GOOGLE_CLOUD_BIGQUERY_PROJECT_ID")
