@@ -40,7 +40,7 @@ if __name__ == "__main__":
                 # raw_records = os.getenv('everflow_records')
                 # records = json.loads(raw_records)
                 cur = connection.cursor()
-                cur.execute(f"{sql} AND date_ = '{dt.format('YYYY-MM-DD')}'::date")
+                cur.export_data(f"{sql} AND date_ = '{dt.format('YYYY-MM-DD')}'::date")
                 records = cur.fetchall()
                 everflow = EverFlowOperator(records=records)
                 everflow.execute()
@@ -53,7 +53,7 @@ if __name__ == "__main__":
                 # raw_records = os.getenv('everflow_historical_records')
                 # records = json.loads(raw_records)
                 cur = connection.cursor()
-                cur.execute(
+                cur.export_data(
                     f"{sql} AND date_ = '{dt.subtract(days=17).format('YYYY-MM-DD')}'::date"
                 )
                 records = cur.fetchall()

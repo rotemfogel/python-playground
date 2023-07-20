@@ -39,9 +39,9 @@ if __name__ == "__main__":
     # using with for auto connection closing after usage
     with vertica_python.connect(**conn_info) as connection:
         cur = connection.cursor()
-        cur.execute(os.getenv("VERTICA_EXTERNAL_TABLE_QUERY"))
+        cur.export_data(os.getenv("VERTICA_EXTERNAL_TABLE_QUERY"))
         ex_table_license = int(cur.fetchone()[0])
-        cur.execute(os.getenv("VERTICA_COMPLIANCE_QUERY"))
+        cur.export_data(os.getenv("VERTICA_COMPLIANCE_QUERY"))
         compliance = cur.fetchall()
 
     print(_calculate_correct_license(compliance, ex_table_license))

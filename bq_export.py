@@ -11,9 +11,13 @@ SELECT *
 """
 
 if __name__ == "__main__":
-    config = [ConfigurationItem(start_date=date(2019, 9, 9),
-                                end_date=date.today(),
-                                query=__QUERY,
-                                prefix='context_views',
-                                concat=True)]
-    BigQueryClientExecutor(config).execute()
+    config = [
+        ConfigurationItem(
+            start_date=date(2019, 9, 9),
+            end_date=date.today(),
+            query=__QUERY,
+            prefix="context_views",
+            concat=True,
+        )
+    ]
+    BigQueryClientExecutor(config).export_data()

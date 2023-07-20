@@ -1,7 +1,12 @@
 from datetime import datetime
 
 from bigquery.bigquery_client_executor import ConfigurationItem, BigQueryClientExecutor
-from bigquery.bigquery_config import SNOWPLOW_PROJECT_NAME, VIEW_COLUMN, PROD_ANALYTICS_PROJECT_NAME, PROJECT_NAME
+from bigquery.bigquery_config import (
+    SNOWPLOW_PROJECT_NAME,
+    VIEW_COLUMN,
+    PROD_ANALYTICS_PROJECT_NAME,
+    PROJECT_NAME,
+)
 
 ABANDONED_CART_VIEWS = f"""
 WITH sessions AS (
@@ -151,4 +156,4 @@ if __name__ == "__main__":
         #     prefix="abandoned_cart_offers",
         # ),
     ]
-    BigQueryClientExecutor(configuration).execute()
+    BigQueryClientExecutor(configuration).export_data()
