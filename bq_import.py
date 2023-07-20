@@ -12,6 +12,7 @@ if __name__ == "__main__":
     parser.add_argument("-d", "--dataset")
     parser.add_argument("-t", "--table")
     parser.add_argument("-f", "--file")
+    parser.add_argument("-c", "--date_columns")
     args = parser.parse_args()
     project = args.project
     dataset = args.dataset
@@ -21,4 +22,5 @@ if __name__ == "__main__":
     assert dataset is not None, "must provide --dataset"
     assert table is not None, "must provide --table"
     assert file is not None, "must provide --file"
-    BigQueryClientExecutor().import_data(project, dataset, table, file)
+    date_columns = str(args.date_columns).split(",") if args.date_columns else None
+    BigQueryClientExecutor().import_data(project, dataset, table, file, date_columns)

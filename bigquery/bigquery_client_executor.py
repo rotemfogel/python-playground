@@ -8,9 +8,13 @@ from typing import List, Optional
 import pandas as pd
 from dotenv import load_dotenv
 from google.cloud import bigquery
+from google.cloud.bigquery import SourceFormat
 from google.oauth2 import service_account
+from loguru import logger
 
 from bigquery.bigquery_config import PROJECT_NAME
+
+logger.opt(lazy=True)
 
 
 @dataclass
@@ -32,7 +36,9 @@ def concat(prefix: str, start: date, end: date):
     for file in files:
         data_frames.append(pd.read_parquet(file))
     df = pd.concat(data_frames)
-    df.to_parquet(f"data/{prefix}_{start:%Y-%m-%d}-{end:%Y-%m-%d}.parquet")
+    file_name = f"data/{prefix}_{start:%Y-%m-%d}-{end:%Y-%m-%d}.parquet"
+    df.to_parquet(file_name)
+    logger.info("created file {}", file_name)
 
 
 class BigQueryClientExecutor(object):
@@ -65,7 +71,7 @@ class BigQueryClientExecutor(object):
         prefix: str,
     ) -> None:
         date_format = (
-            "%Y-%m-%d %H:%M:%S" if type(start_date) == datetime else "%Y-%m-%d"
+            "%Y-%m-%d %H:%M:{}" if type(start_date) == datetime else "%Y-%m-%d"
         )
         start_time = start_date.strftime(date_format)
         end_time = end_date.strftime(date_format)
@@ -78,7 +84,9 @@ class BigQueryClientExecutor(object):
         df = self._BIGQUERY_CLIENT.query(
             query=query, job_config=job_config
         ).to_dataframe()
-        df.to_parquet(_get_file_name(prefix, start_date))
+        file_name = _get_file_name(prefix, start_date)
+        df.to_parquet(file_name)
+        logger.info("created file {}", file_name)
 
     def export_data(self):
         for config in self._configs:
@@ -88,26 +96,62 @@ class BigQueryClientExecutor(object):
             while (end - start).days > 0:
                 next_day = start + timedelta(days=1)
                 until = date(next_day.year, next_day.month, next_day.day)
-                if not os.path.exists(_get_file_name(prefix, start)):
-                    print(f"fetching {prefix} data for: {start}")
+                start_str = start.strftime("%Y-%m-%d")
+                if not os.path.exists(_get_file_name(prefix, start_str)):
+                    logger.info("fetching {} data for {}", prefix, start_str)
                     self._get_data(start, until, config.query, prefix)
                 start = until
             if config.concat:
                 concat(config.prefix, config.start_date, config.end_date)
 
     def import_data(
-        self, project: str, dataset_id: str, table_name: str, file_name: str
+        self,
+        project_id: str,
+        dataset_id: str,
+        table_name: str,
+        file_name: str,
+        date_columns: List[str] = [],
     ):
-        table_id = ".".join([project, dataset_id, table_name])
+        # def _lookup(s: dtype) -> str:
+        #     match s.name:
+        #         case "float64" | "int64" | "bool":
+        #             return s.name.upper()
+        #         case "datetime64[ns]":
+        #             return "DATE"
+        #         case _:
+        #             return "STRING"
+
+        table_id = ".".join([project_id, dataset_id, table_name])
         suffix = file_name.split(".")[-1]
+        dtypes = (
+            dict((c, "datetime64[ns]") for c in date_columns)
+            if date_columns
+            else dict()
+        )
         match suffix:
             case "csv":
-                df: pd.DataFrame = pd.read_csv(file_name)
+                df: pd.DataFrame = pd.read_csv(file_name).astype(dtypes)
+                source_format = SourceFormat.CSV
             case "parquet":
-                df: pd.DataFrame = pd.read_parquet(file_name)
+                df: pd.DataFrame = pd.read_parquet(file_name).astype(dtypes)
+                source_format = SourceFormat.PARQUET
             case "json":
-                df: pd.DataFrame = pd.read_json(file_name)
+                df: pd.DataFrame = pd.read_json(file_name).astype(dtypes)
+                source_format = SourceFormat.NEWLINE_DELIMITED_JSON
+        logger.info(
+            "about to load file {} to {}.{}.{}",
+            file_name,
+            project_id,
+            dataset_id,
+            table_name,
+        )
+        # schema = [
+        #     bigquery.SchemaField(name=k, field_type=_lookup(v))
+        #     for k, v in df.dtypes.to_dict().items()
+        # ]
         job_config = bigquery.LoadJobConfig(
+            # schema=schema,
+            source_format=source_format,
             write_disposition="WRITE_TRUNCATE",
         )
         # Make an API request.
@@ -117,8 +161,9 @@ class BigQueryClientExecutor(object):
         # Wait for the job to complete.
         job.result()
         table_ref = self._BIGQUERY_CLIENT.get_table(table_id)  # Make an API request.
-        print(
-            "Loaded {} rows and {} columns to {}".format(
-                table_ref.num_rows, len(table_ref.schema), table_id
-            )
+        logger.info(
+            "Loaded %d rows and %d columns to {}",
+            table_ref.num_rows,
+            len(table_ref.schema),
+            table_id,
         )
