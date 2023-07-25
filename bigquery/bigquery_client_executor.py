@@ -19,15 +19,19 @@ logger.opt(lazy=True)
 
 @dataclass
 class ConfigurationItem:
-    start_date: date | datetime
-    end_date: date | datetime
+    start_date: date | datetime | None
+    end_date: date | datetime | None
     query: str
     prefix: str
     concat: bool = True
 
 
-def _get_file_name(prefix: str, start_date: str) -> str:
-    return f"data/{prefix}_{start_date}.parquet"
+def _get_file_name(prefix: str, start_date: str | None) -> str:
+    return (
+        f"data/{prefix}_{start_date}.parquet"
+        if start_date
+        else f"data/{prefix}.parquet"
+    )
 
 
 def concat(prefix: str, start: date, end: date):
@@ -65,44 +69,58 @@ class BigQueryClientExecutor(object):
 
     def _get_data(
         self,
-        start_date: date | datetime,
-        end_date: date | datetime,
+        start_date: date | datetime | None,
+        end_date: date | datetime | None,
         query: str,
         prefix: str,
     ) -> None:
-        date_format = (
-            "%Y-%m-%d %H:%M:{}" if type(start_date) == datetime else "%Y-%m-%d"
-        )
-        start_time = start_date.strftime(date_format)
-        end_time = end_date.strftime(date_format)
-        job_config = bigquery.QueryJobConfig(
-            query_parameters=[
-                bigquery.ScalarQueryParameter("start_date", "STRING", start_time),
-                bigquery.ScalarQueryParameter("end_date", "STRING", end_time),
-            ]
-        )
-        df = self._BIGQUERY_CLIENT.query(
-            query=query, job_config=job_config
-        ).to_dataframe()
+        query_parameters = []
+        if start_date:
+            date_format = (
+                "%Y-%m-%d %H:%M:{}" if type(start_date) == datetime else "%Y-%m-%d"
+            )
+            start_time = start_date.strftime(date_format)
+            query_parameters.append(
+                bigquery.ScalarQueryParameter("start_date", "STRING", start_time)
+            )
+        if end_date:
+            date_format = (
+                "%Y-%m-%d %H:%M:{}" if type(end_date) == datetime else "%Y-%m-%d"
+            )
+            end_time = end_date.strftime(date_format)
+            query_parameters.append(
+                bigquery.ScalarQueryParameter("end_date", "STRING", end_time)
+            )
+        if query_parameters:
+            job_config = bigquery.QueryJobConfig(query_parameters=query_parameters)
+            query = self._BIGQUERY_CLIENT.query(query=query, job_config=job_config)
+        else:
+            query = self._BIGQUERY_CLIENT.query(query=query)
+        df = query.to_dataframe()
         file_name = _get_file_name(prefix, start_date)
         df.to_parquet(file_name)
         logger.info("created file {}", file_name)
 
     def export_data(self):
         for config in self._configs:
-            start = copy(config.start_date)
-            end = copy(config.end_date)
-            prefix = config.prefix
-            while (end - start).days > 0:
-                next_day = start + timedelta(days=1)
-                until = date(next_day.year, next_day.month, next_day.day)
-                start_str = start.strftime("%Y-%m-%d")
-                if not os.path.exists(_get_file_name(prefix, start_str)):
-                    logger.info("fetching {} data for {}", prefix, start_str)
-                    self._get_data(start, until, config.query, prefix)
-                start = until
-            if config.concat:
-                concat(config.prefix, config.start_date, config.end_date)
+            if config.start_date:
+                start = copy(config.start_date)
+                end = copy(config.end_date)
+                prefix = config.prefix
+                while (end - start).days > 0:
+                    next_day = start + timedelta(days=1)
+                    until = date(next_day.year, next_day.month, next_day.day)
+                    start_str = start.strftime("%Y-%m-%d")
+                    if not os.path.exists(_get_file_name(prefix, start_str)):
+                        logger.info("fetching {} data for {}", prefix, start_str)
+                        self._get_data(start, until, config.query, prefix)
+                    start = until
+                if config.concat:
+                    concat(prefix, config.start_date, config.end_date)
+            else:
+                self._get_data(
+                    config.start_date, config.end_date, config.query, config.prefix
+                )
 
     def import_data(
         self,
