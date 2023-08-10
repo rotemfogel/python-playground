@@ -77,7 +77,7 @@ class BigQueryClientExecutor(object):
         query_parameters = []
         if start_date:
             date_format = (
-                "%Y-%m-%d %H:%M:{}" if type(start_date) == datetime else "%Y-%m-%d"
+                "%Y-%m-%d %H:%M:%S" if type(start_date) == datetime else "%Y-%m-%d"
             )
             start_time = start_date.strftime(date_format)
             query_parameters.append(
@@ -85,7 +85,7 @@ class BigQueryClientExecutor(object):
             )
         if end_date:
             date_format = (
-                "%Y-%m-%d %H:%M:{}" if type(end_date) == datetime else "%Y-%m-%d"
+                "%Y-%m-%d %H:%M:%S" if type(end_date) == datetime else "%Y-%m-%d"
             )
             end_time = end_date.strftime(date_format)
             query_parameters.append(
@@ -93,11 +93,12 @@ class BigQueryClientExecutor(object):
             )
         if query_parameters:
             job_config = bigquery.QueryJobConfig(query_parameters=query_parameters)
-            query = self._BIGQUERY_CLIENT.query(query=query, job_config=job_config)
         else:
-            query = self._BIGQUERY_CLIENT.query(query=query)
-        df = query.to_dataframe()
-        file_name = _get_file_name(prefix, start_date)
+            job_config = None
+        df = self._BIGQUERY_CLIENT.query(
+            query=query, job_config=job_config
+        ).to_dataframe()
+        file_name = self._get_file_name(prefix, start_date)
         df.to_parquet(file_name)
         logger.info("created file {}", file_name)
 
