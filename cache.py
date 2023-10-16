@@ -1,107 +1,178 @@
-import json
-import os
-import pickle
-from typing import List, Any, Optional, Set
-from urllib.parse import urlparse
+import asyncio
+import functools
+import inspect
+from enum import Enum, auto
+from typing import Any, Awaitable, Callable, Literal, ParamSpec, TypeVar, cast
 
-import redis
-import yaml
-from dotenv import load_dotenv
+__MEMORY_CACHE = {"a": 1, "b": 2, "c": 3}  # initialize the cache
+__CACHE_VERSION = "v1"
+__CACHE_KEY_DELIMITER = "|"
 
-load_dotenv()
-
-__CACHE_VERSION = "V1"
-__CACHE_KEY_DELIMITER = "-"
-__REDIS_URL = os.getenv("REDIS_URL") or "rediss://127.0.0.1:6381"
-__URL = urlparse(__REDIS_URL)
-__REDIS_CACHE = redis.Redis(
-    host=__URL.hostname,  # type: ignore
-    port=__URL.port,  # type: ignore
-    username=__URL.username,
-    password=__URL.password,
-    ssl=True,
-    ssl_cert_reqs=None,
-)
+ReturnT = TypeVar("ReturnT")
+ParamT = ParamSpec("ParamT")
 
 
-def cache_keys() -> List[str]:
-    return [key.decode("utf-8") for key in __REDIS_CACHE.keys()]
+class CacheValue(Enum):
+    NOT_FOUND = auto()
 
 
-def cache_set(
-    key: str, value: Any, ttl: int | None = None, do_pickle: bool = True
-) -> None:
-    if value is not None:
-        value_ = pickle.dumps(value, fix_imports=True) if do_pickle else value
-        __REDIS_CACHE.set(key, value_)
-        if ttl:
-            __REDIS_CACHE.expire(key, ttl)
+def cache_in_memory():
+    """Cache data in memory"""
+
+    def get_arg_default(function: Callable, arg_name: str):
+        """Return defaults values of arguments of function
+        :param function:
+        :param arg_name
+        :return: default value or None
+        """
+        args = get_function_parameters(function)
+        for arg in args:
+            if arg.name == arg_name:
+                arg_def = arg.default
+                return arg_def if arg_def != inspect.Parameter.empty else None
+        return None
+
+    def get_function_parameters(function: Callable) -> list:
+        """Get function parameters
+        :param function
+        :return: Parameter list of function
+        """
+        return list(inspect.signature(function).parameters.values())
+
+    def _get_function_identifier(function: Callable) -> str:
+        """Get an unique function identifier"""
+
+        return f"{function.__module__}.{function.__name__}"
+
+    def make_cache_keys(function: Callable, args, kwargs) -> str:
+        """Generate the cache keys
+        :param function: the function to execute
+        :param args: function args
+        :param kwargs: function kwargs
+        :return: key in str format
+                 e.g function_name-arg_1-arg_2-arg_3
+        """
+        # we want to use the full qualifier name in case multiple modules contain same function name
+        function_identifier = _get_function_identifier(function)
+        keys = [__CACHE_VERSION, function_identifier]
+        arg_parameters = get_function_parameters(function)
+        if len(args) == 0:
+            for parameter in arg_parameters:
+                if parameter.name in kwargs:
+                    keys.append(str(kwargs[parameter.name]))
+                else:
+                    keys.append(str(get_arg_default(function, parameter.name)))
+            return __CACHE_KEY_DELIMITER.join(keys)
+        else:
+            keys += [str(value) for value in args]
+            if len(args) == len(arg_parameters):
+                return __CACHE_KEY_DELIMITER.join(keys)
+            else:
+                for i in range(len(args), len(arg_parameters)):
+                    if arg_parameters[i].name in kwargs:
+                        keys.append(str(kwargs[arg_parameters[i].name]))
+                    else:
+                        keys.append(
+                            str(get_arg_default(function, arg_parameters[i].name))
+                        )
+                return __CACHE_KEY_DELIMITER.join(keys)
+
+    def memory_cache_get(key: str) -> Any:
+        """Get value in memory cache"""
+        # we need this to distinguish cache-not-found and function_return=None
+        return __MEMORY_CACHE.get(key) or CacheValue.NOT_FOUND
+
+    def decorator(function: Callable[ParamT, ReturnT]) -> Callable[ParamT, ReturnT]:
+        class CacheLogicWrapper:
+            """
+            The reason we implemented this as a context manager is to reduce code duplication
+            instead of defining 2 identical functions (sync vs async)
+            """
+
+            def __init__(
+                self,
+                *args: ParamT.args,
+                **kwargs: ParamT.kwargs,
+            ) -> None:
+                self.args = args
+                self.kwargs = kwargs
+                self.value = CacheValue.NOT_FOUND
+                self.key = make_cache_keys(function, self.args, self.kwargs)
+                self.new_value = False
+
+            def __enter__(self) -> "CacheLogicWrapper":
+                self.value = memory_cache_get(self.key)
+                if self.value is CacheValue.NOT_FOUND:
+                    self.value = function(*self.args, **self.kwargs)  # type: ignore
+                return self
+
+            def __exit__(
+                self, exc_type: Any, exc_value: Any, traceback: Any
+            ) -> Literal[False]:
+                return False  # don't swallow exception
+
+            def execute_sync(self) -> ReturnT:
+                """Execute the cache logic sync"""
+
+                return cast(ReturnT, self.value)
+
+            async def execute_async(self) -> Any:
+                """Execute the cache logic async"""
+                if self.new_value:
+                    self.value = await cast(Awaitable[Any], self.value)
+                return self.value
+
+        if inspect.iscoroutinefunction(function):
+            # async version
+            @functools.wraps(function)  # type: ignore
+            async def async_wrapper(
+                *args: ParamT.args, **kwargs: ParamT.kwargs  # type: ignore
+            ) -> Any:
+                with CacheLogicWrapper(*args, **kwargs) as cache_logic:
+                    value = await cache_logic.execute_async()
+
+                return value
+
+            wrapper = async_wrapper
+
+        else:
+            # sync version
+            @functools.wraps(function)
+            def sync_wrapper(
+                *args: ParamT.args, **kwargs: ParamT.kwargs  # type: ignore
+            ) -> ReturnT:
+                with CacheLogicWrapper(*args, **kwargs) as cache_logic:
+                    value = cache_logic.execute_sync()
+
+                return value
+
+            wrapper = sync_wrapper
+
+        return cast(Callable[ParamT, ReturnT], wrapper)
+
+    return decorator
 
 
-def cache_get(
-    key: str, ttl: int | None = None, auto_renew: bool = False, unpickle: bool = True
-) -> Optional[Any]:
-    result = __REDIS_CACHE.get(key)
-    if result:
-        if auto_renew and ttl is not None and ttl > 0:
-            __REDIS_CACHE.expire(key, ttl)
-    return pickle.loads(result) if result and unpickle else result
+def _get(key: str) -> Any:
+    return 1 if key == "a" else CacheValue.NOT_FOUND
 
 
-def cache_set_get(key: str) -> Set[Any]:
-    key_ = __CACHE_KEY_DELIMITER.join([__CACHE_VERSION, key])
-    result = __REDIS_CACHE.smembers(key_)
-    return set([pickle.loads(s) for s in result])
+@cache_in_memory()
+def sync_get(key: str) -> Any:
+    return _get(key)
 
 
-def cache_set_add(key: str, value: Any) -> None:
-    key_ = __CACHE_KEY_DELIMITER.join([__CACHE_VERSION, key])
-    value_ = pickle.dumps(value)
-    __REDIS_CACHE.sadd(key_, value_)
+@cache_in_memory()
+async def async_get(key: str) -> Any:
+    return _get(key)
 
 
-def cache_set_remove(key: str, value: Any) -> None:
-    key_ = __CACHE_KEY_DELIMITER.join([__CACHE_VERSION, key])
-    value_ = pickle.dumps(value)
-    __REDIS_CACHE.srem(key_, value_)
-
-
-def cache_set_lookup(key: str, value: Any) -> bool:
-    return value in cache_set_get(key)
-
-
-def get_cache_keys() -> List[str]:
-    file = "cache_keys.pkl"
-    try:
-        with open(file, "rb") as r:
-            keys = pickle.load(r)
-    except IOError:
-        keys = cache_keys()
-        with open(file, "wb") as w:
-            pickle.dump(keys, w)
-    return keys
+async def run():
+    print(sync_get("a"))
+    print(sync_get("a"))
+    print(await async_get("a"))
+    print(await async_get("a"))
 
 
 if __name__ == "__main__":
-    key_sizes_file = "key_sizes.yml"
-    cache_keys = get_cache_keys()
-    cache_key_sizes = list(map(lambda x: {len(x): x}, cache_keys))
-    key_sizes = {}
-    with open(key_sizes_file, "r") as f:
-        key_sizes = yaml.safe_load(f)
-    if not key_sizes:
-        key_sizes = {}
-        for cache_key in cache_key_sizes:
-            key_size = list(cache_key.keys())[0]
-            count = key_sizes.get(key_size, 0) + 1
-            key_sizes.update({key_size: count})
-        with open(key_sizes_file, "w") as f:
-            yaml.safe_dump(key_sizes, f)
-    large_keys_sz = list(filter(lambda k: k > 5000, key_sizes.keys()))
-    large_keys = []
-    for k_sz in large_keys_sz:
-        for i in cache_key_sizes:
-            if list(i.keys())[0] == k_sz:
-                large_keys.append(i[k_sz])
-    with open("large_keys.json", "w") as f:
-        json.dump(large_keys, f, indent=1)
+    asyncio.run(run())
